@@ -154,4 +154,14 @@ def cli(pet_name, work_minutes, break_minutes, list_pets_flag, stats_flag, no_so
     app = QApplication(sys.argv)
     window = PetWindow(pet=pet)
     window.run(timer_getter=timer_getter, on_toggle_pause=on_toggle_pause, on_reset=on_reset)
+
+    # Tray icon
+    from src.ui.tray import TrayManager
+    tray = TrayManager(
+        on_pause=on_toggle_pause,
+        on_reset=on_reset,
+        on_quit=app.quit,
+    )
+    tray.show()
+
     app.exec()
