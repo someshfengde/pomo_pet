@@ -46,7 +46,7 @@ Pomo Pet is a CLI application that combines the Pomodoro productivity technique 
 - Dark mode / light mode themes
 - Desktop notifications
 
-## Project Structure
+## Project Structure ( Rough feel free to modify as needed)
 
 ```
 pomo_pet/

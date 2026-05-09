@@ -73,9 +73,10 @@ class PetWindow(QMainWindow):
         # State
         self.timer_text: str = "25:00"
         self.timer_phase: str = "WORK"
-        self.timer_progress: float = 0.0  # 0.0 to 1.0
+        self.timer_progress: float = 0.0
         self.message: str = "Let's focus!"
         self.sessions: int = 0
+        self.paused: bool = False
 
         # Animation
         self._animations: Dict[str, List[QPixmap]] = {}
@@ -84,12 +85,20 @@ class PetWindow(QMainWindow):
         self._frame_index: int = 0
         self._frame_timer: float = 0.0
         self._message_slide: float = 0.0
+        self._idle_timer: float = 0.0       # time spent idle
+        self._review_toggle: int = 0        # counter for alternating running/review
+        self._review_toggle_timer: float = 0.0  # timer for review alternation
+        self._pending_anim: Optional[str] = None  # anim to return to after one-shot
 
         # Drag
         self._drag_pos: Optional[QPoint] = None
+        self._drag_prev_x: int = 0
+        self._drag_start_pos: Optional[QPoint] = None
 
         # Callbacks
         self._timer_getter = None
+        self._on_toggle_pause = None
+        self._on_reset = None
         self._last_phase: Optional[str] = None
 
         self._setup_window()
@@ -150,9 +159,21 @@ class PetWindow(QMainWindow):
         self._frame_index = 0
         self._frame_timer = 0.0
 
+    def _play_once(self, name: str) -> None:
+        """Play a one-shot animation, then return to phase animation."""
+        if name not in self._animations:
+            return
+        self._pending_anim = self._pick_animation(self.timer_phase)
+        self._current_anim = name
+        self._frame_index = 0
+        self._frame_timer = 0.0
+
     def _pick_animation(self, phase: str) -> str:
         phase = phase.upper()
         if phase == "WORK":
+            # Alternate between running and review every ~10 seconds
+            if "review" in self._animations and self._review_toggle % 2 == 1:
+                return "review"
             for n in ("running", "review", "run_right", "idle"):
                 if n in self._animations:
                     return n
@@ -181,8 +202,10 @@ class PetWindow(QMainWindow):
     def set_sessions(self, count: int) -> None:
         self.sessions = count
 
-    def run(self, timer_getter=None) -> None:
+    def run(self, timer_getter=None, on_toggle_pause=None, on_reset=None) -> None:
         self._timer_getter = timer_getter
+        self._on_toggle_pause = on_toggle_pause
+        self._on_reset = on_reset
         self.show()
 
     def quit_window(self) -> None:
@@ -196,16 +219,54 @@ class PetWindow(QMainWindow):
         dt = 1.0 / self.config.fps
 
         if self._timer_getter is not None:
-            remaining, phase, sessions, message, progress = self._timer_getter()
+            remaining, phase, sessions, message, progress, paused = self._timer_getter()
+
+            # Detect session complete (sessions count increased)
+            if sessions > self.sessions and self.sessions > 0:
+                self._play_once("waving")
+
+            # Detect phase transition
+            if phase != self.timer_phase and self._last_phase is not None:
+                # Jumping on phase change (but not if we just played waving)
+                if not self._pending_anim:
+                    self._play_once("jumping")
+
+            # Detect timer expire (remaining == "00:00")
+            if remaining == "00:00" and not paused and not self._pending_anim:
+                self._play_once("failed")
+
             self.set_timer_text(remaining, phase)
             self.set_sessions(sessions)
             self.set_timer_progress(progress)
+            self.paused = paused
             if message:
                 self.set_message(message)
 
+        # Track phase changes
         if self.timer_phase != self._last_phase:
             self._last_phase = self.timer_phase
-            self._set_animation(self._pick_animation(self.timer_phase))
+            self._review_toggle = 0
+            # If no pending one-shot, switch to phase animation
+            if not self._pending_anim:
+                self._set_animation(self._pick_animation(self.timer_phase))
+
+        # Track idle time for waiting animation
+        if self._current_anim == "idle" and not self._pending_anim:
+            self._idle_timer += dt
+            # After 30 seconds of idle, switch to waiting
+            if self._idle_timer >= 30.0 and "waiting" in self._animations:
+                self._set_animation("waiting")
+                self._idle_timer = 0.0
+        else:
+            self._idle_timer = 0.0
+
+        # Track work phase time for running/review alternation
+        if self._current_anim in ("running", "review") and not self._pending_anim:
+            self._review_toggle_timer += dt
+            if self._review_toggle_timer >= 10.0:
+                self._review_toggle += 1
+                self._review_toggle_timer = 0.0
+                self._set_animation(self._pick_animation(self.timer_phase))
 
         self._animate(dt)
         self.update()
@@ -220,7 +281,12 @@ class PetWindow(QMainWindow):
                 self._frame_timer = 0.0
                 self._frame_index += 1
                 if self._frame_index >= len(frames):
-                    if ad and ad.loop:
+                    if self._pending_anim:
+                        # One-shot finished, return to pending
+                        next_anim = self._pending_anim
+                        self._pending_anim = None
+                        self._set_animation(next_anim)
+                    elif ad and ad.loop:
                         self._frame_index = 0
                     else:
                         self._frame_index = len(frames) - 1
@@ -230,20 +296,46 @@ class PetWindow(QMainWindow):
             self._message_slide = min(1.0, self._message_slide + dt * 3.0)
 
     # ------------------------------------------------------------------
-    # Mouse
+    # Mouse — drag, click (pause), double-click (reset)
     # ------------------------------------------------------------------
 
     def mousePressEvent(self, event) -> None:
         if event.button() == Qt.LeftButton:
             self._drag_pos = event.globalPosition().toPoint() - self.pos()
+            self._drag_prev_x = event.globalPosition().toPoint().x()
+            self._drag_start_pos = event.globalPosition().toPoint()
 
     def mouseMoveEvent(self, event) -> None:
         if self._drag_pos is not None:
-            self.move(event.globalPosition().toPoint() - self._drag_pos)
+            new_pos = event.globalPosition().toPoint() - self._drag_pos
+            self.move(new_pos)
+
+            cur_x = event.globalPosition().toPoint().x()
+            dx = cur_x - self._drag_prev_x
+            if abs(dx) > 2:
+                if dx > 0 and "run_right" in self._animations:
+                    self._set_animation("run_right")
+                elif dx < 0 and "run_left" in self._animations:
+                    self._set_animation("run_left")
+                self._drag_prev_x = cur_x
 
     def mouseReleaseEvent(self, event) -> None:
         if event.button() == Qt.LeftButton:
+            # Check if it was a click (no significant drag)
+            if self._drag_start_pos is not None:
+                delta = event.globalPosition().toPoint() - self._drag_start_pos
+                moved = abs(delta.x()) + abs(delta.y())
+                if moved < 5 and self._on_toggle_pause:
+                    self._on_toggle_pause()
+
             self._drag_pos = None
+            self._drag_start_pos = None
+            self._set_animation(self._pick_animation(self.timer_phase))
+
+    def mouseDoubleClickEvent(self, event) -> None:
+        if event.button() == Qt.LeftButton:
+            if self._on_reset:
+                self._on_reset()
 
     def keyPressEvent(self, event) -> None:
         if event.key() in (Qt.Key_Escape, Qt.Key_Q):
@@ -356,5 +448,25 @@ class PetWindow(QMainWindow):
             slide_offset = int((1.0 - self._message_slide) * 8)
             msg_y = H - P - 16 - slide_offset
             p.drawText(QRect(0, msg_y, W, 16), Qt.AlignHCenter, display_msg)
+
+        # --- Paused overlay ---
+        if self.paused:
+            # Semi-transparent dim over the whole widget
+            p.setPen(Qt.NoPen)
+            p.setBrush(QBrush(QColor(0, 0, 0, 80)))
+            p.drawRoundedRect(QRect(0, 0, W, H), R, R)
+
+            # "PAUSED" text centered
+            pause_font = QFont("Helvetica Neue", 14)
+            pause_font.setBold(True)
+            p.setFont(pause_font)
+            p.setPen(QPen(QColor(255, 255, 255, 200)))
+            p.drawText(QRect(0, H // 2 - 20, W, 30), Qt.AlignHCenter, "⏸  PAUSED")
+
+            # Hint text below
+            hint_font = QFont("Helvetica Neue", 9)
+            p.setFont(hint_font)
+            p.setPen(QPen(QColor(255, 255, 255, 100)))
+            p.drawText(QRect(0, H // 2 + 10, W, 20), Qt.AlignHCenter, "click to resume · double-click to reset")
 
         p.end()

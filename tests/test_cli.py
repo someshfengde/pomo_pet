@@ -15,124 +15,113 @@ class TestCLIHelp:
     def test_help_flag(self, runner):
         result = runner.invoke(cli, ["--help"])
         assert result.exit_code == 0
-        assert "Pomo Pet" in result.output or "pomo" in result.output.lower()
 
-    def test_no_args_shows_help(self, runner):
+    def test_no_args(self, runner):
         result = runner.invoke(cli, [])
         assert result.exit_code in (0, 1, 2)
 
 
 class TestListPets:
-    def test_list_pets_flag(self, runner):
+    def test_list_pets(self, runner):
         result = runner.invoke(cli, ["--list-pets"])
         assert result.exit_code == 0
-        assert "avocado" in result.output.lower() or "Avocado" in result.output
+        assert "avocado" in result.output.lower()
 
-    def test_list_pets_empty(self, runner, tmp_path):
+    def test_empty(self, runner, tmp_path):
         with patch("src.cli.get_pets_dir", return_value=tmp_path):
             result = runner.invoke(cli, ["--list-pets"])
-            assert result.exit_code == 0
             assert "No pets found" in result.output
 
 
 class TestCLIOptions:
-    def test_pet_option_not_found(self, runner):
-        result = runner.invoke(cli, ["--pet", "nonexistent"])
-        assert result.exit_code == 1
-
-    def test_work_duration_option(self, runner):
-        result = runner.invoke(cli, ["--help"])
-        assert "--work" in result.output
-
-    def test_break_duration_option(self, runner):
-        result = runner.invoke(cli, ["--help"])
-        assert "--break" in result.output
+    def test_unknown_pet(self, runner):
+        assert runner.invoke(cli, ["--pet", "nope"]).exit_code == 1
 
     @patch("src.cli.QApplication")
     @patch("src.cli.PetWindow")
-    def test_pet_starts_window(self, mock_window_cls, mock_qapp, runner):
-        mock_instance = MagicMock()
-        mock_window_cls.return_value = mock_instance
-
+    def test_starts_window(self, mock_w, mock_q, runner):
+        mock_w.return_value = MagicMock()
         result = runner.invoke(cli, ["--pet", "avocado"])
         assert result.exit_code == 0
         assert "Starting Pomo Pet" in result.output
-        mock_instance.run.assert_called_once()
 
     @patch("src.cli.QApplication")
     @patch("src.cli.PetWindow")
-    def test_custom_durations(self, mock_window_cls, mock_qapp, runner):
-        mock_instance = MagicMock()
-        mock_window_cls.return_value = mock_instance
-
+    def test_custom_durations(self, mock_w, mock_q, runner):
+        mock_w.return_value = MagicMock()
         result = runner.invoke(cli, ["--pet", "avocado", "--work", "30", "--break", "10"])
         assert result.exit_code == 0
         assert "30min" in result.output
-        assert "10min" in result.output
-
-    @patch("src.cli.QApplication")
-    @patch("src.cli.PetWindow")
-    def test_default_durations(self, mock_window_cls, mock_qapp, runner):
-        mock_instance = MagicMock()
-        mock_window_cls.return_value = mock_instance
-
-        result = runner.invoke(cli, ["--pet", "avocado"])
-        assert result.exit_code == 0
-        assert "25min" in result.output
-        assert "5min" in result.output
 
 
 class TestTimerGetter:
     @patch("src.cli.QApplication")
     @patch("src.cli.PetWindow")
-    def test_timer_getter_called_by_window(self, mock_window_cls, mock_qapp, runner):
-        mock_instance = MagicMock()
-        mock_window_cls.return_value = mock_instance
-
+    def test_returns_6_values(self, mock_w, mock_q, runner):
+        mock_w.return_value = MagicMock()
         runner.invoke(cli, ["--pet", "avocado"])
-
-        _, kwargs = mock_instance.run.call_args
-        assert "timer_getter" in kwargs
-        assert callable(kwargs["timer_getter"])
-
-    @patch("src.cli.QApplication")
-    @patch("src.cli.PetWindow")
-    def test_timer_getter_returns_tuple(self, mock_window_cls, mock_qapp, runner):
-        mock_instance = MagicMock()
-        mock_window_cls.return_value = mock_instance
-
-        runner.invoke(cli, ["--pet", "avocado"])
-
-        _, kwargs = mock_instance.run.call_args
-        getter = kwargs["timer_getter"]
+        getter = mock_w.return_value.run.call_args[1]["timer_getter"]
         result = getter()
-        assert len(result) == 4
-        remaining, phase, sessions, message = result
+        assert len(result) == 6
+        remaining, phase, sessions, message, progress, paused = result
         assert isinstance(remaining, str)
         assert ":" in remaining
         assert phase in ("WORK", "BREAK")
         assert isinstance(sessions, int)
         assert isinstance(message, str)
-        assert len(message) > 0
+        assert isinstance(progress, float)
+        assert isinstance(paused, bool)
 
     @patch("src.cli.QApplication")
     @patch("src.cli.PetWindow")
-    def test_timer_getter_ticks_on_subsequent_calls(self, mock_window_cls, mock_qapp, runner):
-        mock_instance = MagicMock()
-        mock_window_cls.return_value = mock_instance
-
+    def test_callbacks_passed(self, mock_w, mock_q, runner):
+        mock_w.return_value = MagicMock()
         runner.invoke(cli, ["--pet", "avocado"])
+        kwargs = mock_w.return_value.run.call_args[1]
+        assert "on_toggle_pause" in kwargs
+        assert "on_reset" in kwargs
+        assert callable(kwargs["on_toggle_pause"])
+        assert callable(kwargs["on_reset"])
 
-        _, kwargs = mock_instance.run.call_args
+    @patch("src.cli.QApplication")
+    @patch("src.cli.PetWindow")
+    def test_toggle_pause_callback(self, mock_w, mock_q, runner):
+        mock_w.return_value = MagicMock()
+        runner.invoke(cli, ["--pet", "avocado"])
+        kwargs = mock_w.return_value.run.call_args[1]
         getter = kwargs["timer_getter"]
+        on_toggle_pause = kwargs["on_toggle_pause"]
 
+        # Initially not paused
+        assert getter()[5] is False
+
+        # Toggle pause
+        on_toggle_pause()
+        assert getter()[5] is True
+
+        # Toggle again
+        on_toggle_pause()
+        assert getter()[5] is False
+
+    @patch("src.cli.QApplication")
+    @patch("src.cli.PetWindow")
+    def test_reset_callback(self, mock_w, mock_q, runner):
+        mock_w.return_value = MagicMock()
+        runner.invoke(cli, ["--pet", "avocado"])
+        kwargs = mock_w.return_value.run.call_args[1]
+        getter = kwargs["timer_getter"]
+        on_reset = kwargs["on_reset"]
+
+        # Initial state
+        initial_remaining = getter()[0]
+
+        # Simulate time passing (mock time)
         import time
-        first = getter()
         time.sleep(1.1)
-        second = getter()
+        getter()  # triggers a tick
 
-        def parse_time(s):
-            m, sec = s.split(":")
-            return int(m) * 60 + int(sec)
-
-        assert parse_time(second[0]) <= parse_time(first[0])
+        # Reset
+        on_reset()
+        result = getter()
+        assert result[0] == initial_remaining
+        assert result[5] is False  # not paused

@@ -9,7 +9,7 @@ import click
 from PySide6.QtWidgets import QApplication
 
 from src.pet_loader import list_pets
-from src.timer import PomodoroTimer
+from src.timer import PomodoroTimer, TimerPhase
 from src.messages import get_message
 from src.pet_window import PetWindow
 
@@ -78,7 +78,7 @@ def cli(pet_name: str | None, work_minutes: int, break_minutes: int, list_pets_f
 
         now = time.time()
         elapsed = now - last_tick
-        if elapsed >= 1.0:
+        if elapsed >= 1.0 and not timer.paused:
             ticks = int(elapsed)
             last_tick += ticks
             for _ in range(ticks):
@@ -88,16 +88,27 @@ def cli(pet_name: str | None, work_minutes: int, break_minutes: int, list_pets_f
                 current_message = get_message(timer.phase)
                 last_phase = timer.phase
 
+        total = timer.work_duration if timer.phase == TimerPhase.WORK else timer.break_duration
         return (
             timer.format_remaining(),
             timer.phase.value.upper(),
             timer.sessions_completed,
             current_message,
-            timer.remaining / max(timer.work_duration if timer.phase == TimerPhase.WORK else timer.break_duration, 1),
+            timer.remaining / max(total, 1),
+            timer.paused,
         )
+
+    def on_toggle_pause():
+        timer.toggle_pause()
+
+    def on_reset():
+        nonlocal current_message, last_phase
+        timer.reset()
+        current_message = get_message(timer.phase)
+        last_phase = timer.phase
 
     # Launch the Qt window
     app = QApplication(sys.argv)
     window = PetWindow(pet=pet)
-    window.run(timer_getter=timer_getter)
+    window.run(timer_getter=timer_getter, on_toggle_pause=on_toggle_pause, on_reset=on_reset)
     app.exec()

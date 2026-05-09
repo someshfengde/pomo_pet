@@ -1,51 +1,108 @@
-# Pomo Pet 🐾
+<![CDATA[<div align="center">
 
-A Pomodoro timer with cute digital pets! Combine productivity with adorable companions.
+# 🐾 Pomo Pet
 
-## Features
+**A Pomodoro timer with adorable animated desktop pets**
 
-- **Animated pet display** - floating window with spritesheet animation
-- **Draggable pet** - click and drag to move the pet anywhere on screen
-- **Live timer** - countdown displayed in the pet's status bar
-- **Phase-aware messages** - pet reacts to work and break sessions
-- **Customizable** - set your own work/break durations
-- **Multiple pets** - add your own via pull requests!
+*Focus better. Break smarter. Pet your way to productivity.*
 
-## Installation
+[![Python 3.13+](https://img.shields.io/badge/python-3.13+-blue.svg?logo=python&logoColor=white)](https://python.org)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![Tests](https://img.shields.io/badge/tests-91%20passed-brightgreen.svg)](#testing)
+[![Made with PySide6](https://img.shields.io/badge/Made%20with-PySide6-41CD52?logo=qt&logoColor=white)](https://doc.qt.io/qtforpython-6/)
+
+<br/>
+
+```
+┌─────────────────────────────┐
+│   24:37                     │
+│   ══════════════░░░░░░░░░   │
+│   WORK  ● ● ● ○ ○ ○ ○ ○    │
+│                             │
+│         ┌─────────┐         │
+│         │  🥑     │         │
+│         │ animated│         │
+│         │  pet    │         │
+│         └─────────┘         │
+│                             │
+│       "Stay focused!"       │
+└─────────────────────────────┘
+```
+
+<br/>
+
+[Features](#features) · [Install](#installation) · [Usage](#usage) · [Add Pets](#adding-pets) · [Development](#development)
+
+</div>
+
+---
+
+## ✨ Features
+
+| Feature | Description |
+|---------|-------------|
+| 🎬 **Animated Pets** | Spritesheet-driven animations with 9 states (idle, running, waving, jumping...) |
+| 🖱️ **Drag to Move** | Grab your pet and drag it anywhere on screen |
+| ➡️ **Direction Reactions** | Drag left → pet runs left. Drag right → pet runs right. |
+| ⏱️ **Pomodoro Timer** | 25min work / 5min break (customizable via CLI) |
+| 📊 **Progress Bar** | Gradient progress bar that fills as time passes |
+| ⏸️ **Click to Pause** | Single click toggles pause/play |
+| 🔄 **Double-Click Reset** | Double click resets the current timer |
+| 💬 **Motivational Messages** | Phase-aware messages that change with work/break |
+| 🎯 **Session Tracking** | Gold dots track completed pomodoro sessions |
+| 🌙 **Frosted Glass UI** | Dark, minimal, macOS-inspired design |
+
+## 🚀 Installation
+
+### Prerequisites
+
+- Python 3.13+
+- macOS, Linux, or Windows
+
+### Quick Start
 
 ```bash
-git clone <repo-url>
-cd pomo_pet
+git clone https://github.com/yourusername/pomo-pet.git
+cd pomo-pet
+make install
+```
+
+Or manually:
+
+```bash
 uv sync
 uv pip install -e .
 ```
 
-## Usage
+## 🎮 Usage
 
 ### List available pets
+
 ```bash
 pomo-pet --list-pets
 ```
 
-### Start with a pet
+```
+Available pets:
+  avocado      - Avocado: A cute avocado Codex pet with a warm, hand-painted storybook animation feeling.
+```
+
+### Launch a pet
+
 ```bash
 pomo-pet --pet avocado
 ```
 
 ### Custom timer durations
+
 ```bash
 pomo-pet --pet avocado --work 30 --break 10
 ```
 
-### Window controls
-- **Drag** the pet to move it around your screen
-- **Q** or **ESC** to quit
-
 ### All options
+
 ```
 Usage: pomo-pet [OPTIONS]
-
-  Pomo Pet - A Pomodoro timer with cute digital pets!
 
 Options:
   --pet TEXT       Pet to display (e.g., avocado)
@@ -55,71 +112,142 @@ Options:
   --help           Show this message and exit.
 ```
 
-## Adding New Pets
+## 🕹️ Controls
 
-1. Create a directory under `pets/` with your pet's name (lowercase, no spaces)
-2. Add a `pet.json`:
-   ```json
-   {
-     "id": "dragon",
-     "displayName": "Dragon",
-     "description": "A majestic dragon pet.",
-     "spritesheetPath": "spritesheet.webp",
-     "kind": "creature"
-   }
-   ```
-3. Add a `spritesheet.webp` with animated frames (64x64 per frame)
-4. Submit a pull request!
+| Action | How |
+|--------|-----|
+| **Move pet** | Click and drag anywhere |
+| **Pause / Resume** | Single click on the pet |
+| **Reset timer** | Double click on the pet |
+| **Quit** | Press `Q` or `ESC` |
 
-## Development
+## 🎭 Animation States
+
+The pet automatically switches animations based on context:
+
+| State | When | Spritesheet Row |
+|-------|------|-----------------|
+| `idle` | Break phase, default | Row 0 · 6 frames |
+| `run_right` | Dragging right | Row 1 · 8 frames |
+| `run_left` | Dragging left | Row 2 · 8 frames |
+| `waving` | Available | Row 3 · 4 frames |
+| `jumping` | Available | Row 4 · 5 frames |
+| `failed` | Available | Row 5 · 8 frames |
+| `waiting` | Available | Row 6 · 6 frames |
+| `running` | Work phase | Row 7 · 6 frames |
+| `review` | Available | Row 8 · 6 frames |
+
+## 🐉 Adding Pets
+
+### 1. Create a pet directory
+
+```
+pets/
+  mypet/
+    pet.json
+    spritesheet.webp
+```
+
+### 2. Write `pet.json`
+
+```json
+{
+  "id": "mypet",
+  "displayName": "My Pet",
+  "description": "A custom pet!",
+  "spritesheetPath": "spritesheet.webp",
+  "kind": "creature",
+  "frameWidth": 192,
+  "frameHeight": 192,
+  "animations": {
+    "idle":      { "row": 0, "frames": 6, "fps": 8,  "loop": true },
+    "run_right": { "row": 1, "frames": 8, "fps": 12, "loop": true },
+    "run_left":  { "row": 2, "frames": 8, "fps": 12, "loop": true },
+    "waving":    { "row": 3, "frames": 4, "fps": 8,  "loop": true },
+    "jumping":   { "row": 4, "frames": 5, "fps": 10, "loop": true },
+    "failed":    { "row": 5, "frames": 8, "fps": 10, "loop": false },
+    "waiting":   { "row": 6, "frames": 6, "fps": 6,  "loop": true },
+    "running":   { "row": 7, "frames": 6, "fps": 10, "loop": true },
+    "review":    { "row": 8, "frames": 6, "fps": 8,  "loop": true }
+  }
+}
+```
+
+### 3. Create your spritesheet
+
+- **Format:** WebP with transparency
+- **Frame size:** 192×192 pixels (recommended)
+- **Layout:** One animation per row
+- **Tool:** [Aseprite](https://www.aseprite.org/), [LibreSprite](https://libresprite.github.io/), or [Petdex](https://petdex.dev/)
+
+### 4. Submit a PR
+
+Fork → Add your pet → Pull request!
+
+> 💡 **Tip:** Browse [Petdex](https://petdex.dev/) for spritesheet-compatible pets. Look for the "Install" button and grab the spritesheet!
+
+## 🛠️ Development
 
 ### Run tests
+
 ```bash
-uv run pytest tests/ -v
+make test
 ```
 
 ### Run with coverage
+
 ```bash
-uv run pytest tests/ --cov=src --cov-report=term-missing
+make test-all
 ```
 
 ### Project structure
+
 ```
 pomo_pet/
-├── pets/                    # Pet definitions
-│   └── avacado/
-│       ├── pet.json         # Pet metadata
-│       └── spritesheet.webp # Animation frames
 ├── src/
-│   ├── __init__.py
-│   ├── __main__.py          # python -m src entry point
-│   ├── cli.py               # Click CLI + timer loop
-│   ├── timer.py             # Pomodoro timer logic
-│   ├── pet_loader.py        # Load pets from JSON
-│   ├── pet_renderer.py      # Pillow spritesheet handling
-│   ├── pet_window.py        # Pygame window + rendering
-│   └── messages.py          # Pet message system
+│   ├── cli.py              # Click CLI entry point
+│   ├── timer.py            # Pomodoro timer with pause/reset
+│   ├── pet_loader.py       # Load pets + animations from JSON
+│   ├── pet_renderer.py     # Pillow spritesheet utilities
+│   ├── pet_window.py       # PySide6 window (drag, paint, anim)
+│   └── messages.py         # Phase-aware motivational messages
 ├── tests/
-│   ├── test_timer.py
-│   ├── test_pet_loader.py
-│   ├── test_messages.py
-│   ├── test_pet_renderer.py
-│   ├── test_pet_window.py
-│   ├── test_cli.py
-│   └── test_integration.py
+│   ├── test_timer.py       # 24 tests
+│   ├── test_pet_loader.py  # 12 tests
+│   ├── test_pet_window.py  # 27 tests
+│   ├── test_messages.py    # 6 tests
+│   ├── test_cli.py         # 12 tests
+│   └── test_integration.py # 10 tests
+├── pets/
+│   └── avacado/
+│       ├── pet.json
+│       └── spritesheet.webp
 ├── pyproject.toml
+├── Makefile
 └── README.md
 ```
 
-## Tech Stack
+### Tech stack
 
-- **Python 3.13+**
-- **Click** - CLI argument parsing
-- **pygame-ce** - Window management and rendering
-- **Pillow** - Image handling for spritesheets
-- **pytest** - Testing framework
-- **uv** - Package management
+| Layer | Technology |
+|-------|-----------|
+| CLI | [Click](https://click.palletsprojects.com/) |
+| Window | [PySide6](https://doc.qt.io/qtforpython-6/) (Qt) |
+| Sprites | [Pillow](https://python-pillow.org/) |
+| Testing | [pytest](https://pytest.org/) |
+| Packaging | [uv](https://docs.astral.sh/uv/) |
 
-## License
+## 📝 License
 
 MIT
+
+---
+
+<div align="center">
+
+**Made with 🥑 and ☕**
+
+*Pets are user-submitted fan art. Inspired by [Petdex](https://petdex.dev/).*
+
+</div>
+]]>
