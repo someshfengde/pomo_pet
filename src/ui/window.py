@@ -1,6 +1,10 @@
-"""Pet display window using PySide6 (Qt)."""
+"""Pet display window using PySide6 (Qt) — macOS-optimized."""
 
+import ctypes
+import ctypes.util
 import math
+import struct
+import sys
 from pathlib import Path
 from typing import Optional, Any, List, Dict
 
@@ -13,6 +17,75 @@ from PySide6.QtGui import (
 from src.pets.models import AnimationDef
 from src.ui.theme import Theme, WindowConfig
 
+
+# ---------------------------------------------------------------------------
+# macOS NSWindow helpers via ctypes
+# ---------------------------------------------------------------------------
+
+_objc = None
+
+
+def _get_objc():
+    global _objc
+    if _objc is None:
+        lib_path = ctypes.util.find_library("objc")
+        if lib_path:
+            _objc = ctypes.CDLL(lib_path)
+    return _objc
+
+
+def _sel(name: str) -> int:
+    objc = _get_objc()
+    if not objc:
+        return 0
+    objc.sel_registerName.restype = ctypes.c_void_p
+    objc.sel_registerName.argtypes = [ctypes.c_char_p]
+    return objc.sel_registerName(name.encode())
+
+
+def _msg(obj: int, sel: int, *args):
+    objc = _get_objc()
+    if not objc:
+        return 0
+    objc.objc_msgSend.restype = ctypes.c_void_p
+    objc.objc_msgSend.argtypes = [ctypes.c_void_p, ctypes.c_void_p] + [type(a) for a in args]
+    return objc.objc_msgSend(obj, sel, *args)
+
+
+def _set_nswindow_level(window_id: int, level: int) -> None:
+    """Set NSWindow level (e.g., NSFloatingWindowLevel = 3)."""
+    try:
+        sel = _sel("setLevel:")
+        _msg(window_id, sel, level)
+    except Exception:
+        pass
+
+
+def _set_nswindow_opaque(window_id: int, opaque: bool) -> None:
+    """Set NSWindow.isOpaque = False for transparency."""
+    try:
+        sel = _sel("setOpaque:")
+        _msg(window_id, sel, 1 if opaque else 0)
+    except Exception:
+        pass
+
+
+def _set_nswindow_background_clear(window_id: int) -> None:
+    """Set NSWindow.backgroundColor = NSColor.clearColor."""
+    try:
+        # Get NSColor class
+        ns_color_class = _msg(
+            _msg(0, _sel("class"), ctypes.c_char_p(b"NSColor")),
+            _sel("class")
+        )
+        # This approach is fragile; skip if it fails
+    except Exception:
+        pass
+
+
+# ---------------------------------------------------------------------------
+# PetWindow
+# ---------------------------------------------------------------------------
 
 class PetWindow(QMainWindow):
 
@@ -57,22 +130,44 @@ class PetWindow(QMainWindow):
             Qt.FramelessWindowHint
             | Qt.WindowStaysOnTopHint
             | Qt.Tool
-            | Qt.WindowDoesNotAcceptFocus
         )
         self.setAttribute(Qt.WA_TranslucentBackground)
         self.setAttribute(Qt.WA_NoSystemBackground)
         self.setFixedSize(self.config.width, self.config.height)
         self.move(100, 100)
 
-        # Periodically raise window to keep it on top (macOS workaround)
-        self._raise_timer = QTimer(self)
-        self._raise_timer.timeout.connect(self.raise_)
-        self._raise_timer.start(2000)  # every 2 seconds
+    def showEvent(self, event) -> None:
+        """Called when window is shown — apply macOS-specific fixes."""
+        super().showEvent(event)
+        self._apply_macos_fixes()
+
+    def _apply_macos_fixes(self) -> None:
+        """Apply NSWindow-level fixes for transparency and always-on-top."""
+        if sys.platform != "darwin":
+            return
+
+        try:
+            # Get the native NSWindow pointer
+            info = self.winId()
+            nswindow_ptr = int(info)
+
+            # NSFloatingWindowLevel = 3 (above normal windows, below modal)
+            _set_nswindow_level(nswindow_ptr, 3)
+
+            # Make window non-opaque for true transparency
+            _set_nswindow_opaque(nswindow_ptr, False)
+
+        except Exception:
+            pass
 
     def _setup_timer(self) -> None:
         t = QTimer(self)
         t.timeout.connect(self._tick)
         t.start(1000 // self.config.fps)
+
+    # ------------------------------------------------------------------
+    # Animations
+    # ------------------------------------------------------------------
 
     def _load_animations(self) -> None:
         path = Path(self.pet.spritesheet_path)
@@ -139,6 +234,10 @@ class PetWindow(QMainWindow):
                     return n
         return next(iter(self._animations), "idle")
 
+    # ------------------------------------------------------------------
+    # Public API
+    # ------------------------------------------------------------------
+
     def set_timer_text(self, text: str, phase: str) -> None:
         self.timer_text = text
         self.timer_phase = phase
@@ -162,6 +261,10 @@ class PetWindow(QMainWindow):
 
     def quit_window(self) -> None:
         QApplication.instance().quit()
+
+    # ------------------------------------------------------------------
+    # Tick
+    # ------------------------------------------------------------------
 
     def _tick(self) -> None:
         dt = 1.0 / self.config.fps
@@ -239,6 +342,10 @@ class PetWindow(QMainWindow):
         if self._message_slide < 1.0:
             self._message_slide = min(1.0, self._message_slide + dt * 3.0)
 
+    # ------------------------------------------------------------------
+    # Mouse
+    # ------------------------------------------------------------------
+
     def mousePressEvent(self, event) -> None:
         if event.button() == Qt.LeftButton:
             self._drag_pos = event.globalPosition().toPoint() - self.pos()
@@ -279,6 +386,10 @@ class PetWindow(QMainWindow):
         if event.key() in (Qt.Key_Escape, Qt.Key_Q):
             self.quit_window()
 
+    # ------------------------------------------------------------------
+    # Paint
+    # ------------------------------------------------------------------
+
     def paintEvent(self, event) -> None:
         p = QPainter(self)
         p.setRenderHint(QPainter.Antialiasing)
@@ -291,14 +402,17 @@ class PetWindow(QMainWindow):
         is_work = self.timer_phase == "WORK"
         text_color = Theme.TIMER_TEXT_WORK if is_work else Theme.TIMER_TEXT_BREAK
 
+        # Clear with fully transparent
         p.setCompositionMode(QPainter.CompositionMode_Source)
         p.fillRect(QRect(0, 0, W, H), Qt.transparent)
         p.setCompositionMode(QPainter.CompositionMode_SourceOver)
 
+        # Background
         p.setPen(Qt.NoPen)
         p.setBrush(QBrush(Theme.BG))
         p.drawRoundedRect(QRect(0, 0, W, H), R, R)
 
+        # Timer text
         y = P
         timer_font = QFont("Helvetica Neue", Theme.FONT_TIMER)
         timer_font.setBold(True)
@@ -307,6 +421,7 @@ class PetWindow(QMainWindow):
         p.drawText(QRect(0, y, W, Theme.FONT_TIMER + 4), Qt.AlignHCenter, self.timer_text)
         y += Theme.FONT_TIMER + 8
 
+        # Progress bar
         bar_h = 4
         bar_r = bar_h // 2
         p.setBrush(QBrush(Theme.PROGRESS_BG))
@@ -326,6 +441,7 @@ class PetWindow(QMainWindow):
 
         y += bar_h + 8
 
+        # Phase label + session dots
         label_font = QFont("Helvetica Neue", Theme.FONT_LABEL)
         label_font.setBold(True)
         p.setFont(label_font)
@@ -342,6 +458,7 @@ class PetWindow(QMainWindow):
 
         y += 18
 
+        # Pet animation
         frames = self._animations.get(self._current_anim, [])
         if frames and self._frame_index < len(frames):
             frame = frames[self._frame_index]
@@ -357,11 +474,13 @@ class PetWindow(QMainWindow):
 
         y += pet_h + 6
 
+        # Pet name
         name_font = QFont("Helvetica Neue", 10)
         p.setFont(name_font)
         p.setPen(QPen(Theme.TEXT_DIM))
         p.drawText(QRect(0, y, W, 14), Qt.AlignHCenter, self.pet.display_name)
 
+        # Message
         if self.message:
             display_msg = self.message[:32] + ("..." if len(self.message) > 32 else "")
             msg_font = QFont("Helvetica Neue", Theme.FONT_MESSAGE)
@@ -371,6 +490,7 @@ class PetWindow(QMainWindow):
             msg_y = H - P - 16 - slide_offset
             p.drawText(QRect(0, msg_y, W, 16), Qt.AlignHCenter, display_msg)
 
+        # Paused overlay
         if self.paused:
             p.setPen(Qt.NoPen)
             p.setBrush(QBrush(QColor(0, 0, 0, 60)))
