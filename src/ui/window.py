@@ -53,11 +53,21 @@ class PetWindow(QMainWindow):
         self._setup_timer()
 
     def _setup_window(self) -> None:
-        self.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.Tool)
+        self.setWindowFlags(
+            Qt.FramelessWindowHint
+            | Qt.WindowStaysOnTopHint
+            | Qt.Tool
+            | Qt.WindowDoesNotAcceptFocus
+        )
         self.setAttribute(Qt.WA_TranslucentBackground)
         self.setAttribute(Qt.WA_NoSystemBackground)
         self.setFixedSize(self.config.width, self.config.height)
         self.move(100, 100)
+
+        # Periodically raise window to keep it on top (macOS workaround)
+        self._raise_timer = QTimer(self)
+        self._raise_timer.timeout.connect(self.raise_)
+        self._raise_timer.start(2000)  # every 2 seconds
 
     def _setup_timer(self) -> None:
         t = QTimer(self)

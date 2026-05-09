@@ -9,7 +9,7 @@ class Theme:
     """Apple-inspired design tokens."""
 
     WIDTH: int = 220
-    HEIGHT: int = 290
+    HEIGHT: int = 360
     CORNER_RADIUS: int = 24
     PADDING: int = 16
 
