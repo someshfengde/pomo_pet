@@ -11,7 +11,7 @@ if ! command -v uv &> /dev/null; then
     export PATH="$HOME/.local/bin:$PATH"
 fi
 
-# Clone
+# Clone or update
 INSTALL_DIR="$HOME/.pomo-pet"
 if [ -d "$INSTALL_DIR" ]; then
     echo "Updating existing installation..."
@@ -23,10 +23,21 @@ else
     cd "$INSTALL_DIR"
 fi
 
-# Install
+# Install dependencies
 echo "Installing dependencies..."
 uv sync
-uv pip install -e .
+
+# Create wrapper script in ~/.local/bin
+BIN_DIR="$HOME/.local/bin"
+mkdir -p "$BIN_DIR"
+
+WRAPPER="$BIN_DIR/pomo-pet"
+cat > "$WRAPPER" << 'EOF'
+#!/bin/bash
+cd "$HOME/.pomo-pet"
+exec uv run python -m src "$@"
+EOF
+chmod +x "$WRAPPER"
 
 echo ""
 echo "✅ Pomo Pet installed!"
@@ -34,8 +45,9 @@ echo ""
 echo "Usage:"
 echo "  pomo-pet --list-pets          # See available pets"
 echo "  pomo-pet --pet avocado        # Launch with avocado"
-echo "  pomo-pet --pet avocado --work 30 --break 10"
+echo "  pomo-pet --stats              # View statistics"
 echo ""
-echo "Or run from the install directory:"
-echo "  cd $INSTALL_DIR"
-echo "  make run"
+echo "Make sure ~/.local/bin is in your PATH:"
+echo "  export PATH=\"\$HOME/.local/bin:\$PATH\""
+echo ""
+echo "Add this to your ~/.zshrc or ~/.bashrc to make it permanent."
