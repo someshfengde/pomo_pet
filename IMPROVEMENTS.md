@@ -7,14 +7,12 @@ A prioritized list of improvements to make Pomo Pet a truly delightful, Apple-qu
 ## 🔴 P0 — Critical (fix now)
 
 ### 1. Window transparency broken on macOS
-- Background shows as solid dark rectangle instead of transparent
-- `Qt.WA_TranslucentBackground` may not work reliably with `Qt.Tool` flag
-- **Fix:** Test with `Qt.FramelessWindowHint` only (no `Qt.Tool`), use `NSWindow.setOpaque_(False)` via ctypes
+- **DONE** — Use `NSWindow.setOpaque_(False)` via ctypes in `showEvent`
+- Fixed in `src/ui/window.py` with `_apply_macos_fixes()`
 
 ### 2. Always-on-top unreliable
-- Window goes behind other apps despite `WindowStaysOnTopHint`
-- Current `raise_()` timer is a hack, not a real solution
-- **Fix:** Use `NSWindow.setLevel_(NSFloatingWindowLevel)` via ctypes/PyObjC for reliable always-on-top
+- **DONE** — Use `NSWindow.setLevel_(NSFloatingWindowLevel)` via ctypes
+- Replaces hacky `raise_()` timer
 
 ### 3. Pet sprite rendering quality
 - `smoothscale` can produce blurry output on retina displays
@@ -25,9 +23,9 @@ A prioritized list of improvements to make Pomo Pet a truly delightful, Apple-qu
 ## 🟡 P1 — High Priority (next sprint)
 
 ### 4. Menu bar integration (macOS)
-- Add a tray icon with dropdown: Start/Pause, Reset, Stats, Quit
-- Shows timer in menu bar (like "24:37 🥑")
-- **Tech:** `QSystemTrayIcon` with custom icon
+- **DONE** — `QSystemTrayIcon` with Pause/Reset/Quit menu
+- Tooltip shows timer + phase
+- Fixed in `src/ui/tray.py`
 
 ### 5. Global keyboard shortcuts
 - `Cmd+Shift+P` to pause/resume
