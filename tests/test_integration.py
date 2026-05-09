@@ -6,9 +6,9 @@ from pathlib import Path
 from unittest.mock import patch, MagicMock
 from click.testing import CliRunner
 from src.cli import cli
-from src.timer import PomodoroTimer, TimerPhase
-from src.pet_loader import load_pet, list_pets
-from src.messages import get_message
+from src.core.timer import PomodoroTimer, TimerPhase
+from src.pets.loader import load_pet, list_pets
+from src.core.messages import get_message
 
 
 @pytest.fixture

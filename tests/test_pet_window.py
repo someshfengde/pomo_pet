@@ -8,8 +8,9 @@ from PySide6.QtWidgets import QApplication
 
 _app = QApplication.instance() or QApplication(sys.argv)
 
-from src.pet_window import PetWindow, WindowConfig, Theme
-from src.pet_loader import AnimationDef, Pet
+from src.ui.window import PetWindow
+from src.ui.theme import Theme, WindowConfig
+from src.pets.models import AnimationDef, Pet
 from PySide6.QtCore import Qt, QPoint, QPointF
 from PySide6.QtGui import QMouseEvent
 
@@ -161,9 +162,10 @@ class TestPlayOnce:
     def test_play_once_skips_if_already_pending(self, window):
         """Don't override an already-pending one-shot."""
         window._pending_anim = "idle"
+        window._current_anim = "waving"
         window._play_once("jumping")
-        # pending should still be idle (waving replaced by jumping though)
-        assert window._current_anim == "jumping"
+        assert window._current_anim == "waving"  # unchanged
+        assert window._pending_anim == "idle"  # unchanged
 
 
 class TestTriggerSessionComplete:
@@ -256,7 +258,8 @@ class TestTriggerReviewAlternation:
         """Review toggle increments after 10 seconds."""
         window._current_anim = "running"
         window._review_toggle = 0
-        window._review_toggle_timer = 10.0  # already at threshold
+        window._review_toggle_timer = 10.0
+        window._last_phase = "WORK"  # avoid phase change reset
         window._timer_getter = lambda: ("25:00", "WORK", 0, "Focus!", 0.5, False)
         window._tick()
         assert window._review_toggle == 1

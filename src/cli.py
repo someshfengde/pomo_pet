@@ -8,10 +8,10 @@ from pathlib import Path
 import click
 from PySide6.QtWidgets import QApplication
 
-from src.pet_loader import list_pets
-from src.timer import PomodoroTimer, TimerPhase
-from src.messages import get_message
-from src.pet_window import PetWindow
+from src.pets.loader import list_pets
+from src.core.timer import PomodoroTimer, TimerPhase
+from src.core.messages import get_message
+from src.ui.window import PetWindow
 
 
 def get_pets_dir() -> Path:

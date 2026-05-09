@@ -17,7 +17,6 @@ class PetRenderer:
         self._load_spritesheet()
 
     def _load_spritesheet(self) -> None:
-        """Load the pet's spritesheet image."""
         path = Path(self.pet.spritesheet_path)
         if path.exists():
             self.spritesheet = Image.open(path)
@@ -25,15 +24,7 @@ class PetRenderer:
             self.spritesheet = None
 
     def extract_frames(self, frame_width: int = 64, frame_height: int = 64) -> List[Image.Image]:
-        """Extract individual frames from the spritesheet grid.
-
-        Args:
-            frame_width: Width of each frame in pixels.
-            frame_height: Height of each frame in pixels.
-
-        Returns:
-            List of PIL Image objects, one per frame.
-        """
+        """Extract individual frames from the spritesheet grid."""
         if self.spritesheet is None:
             return []
 
@@ -41,7 +32,7 @@ class PetRenderer:
         cols = sheet.width // frame_width
         rows = sheet.height // frame_height
 
-        frames: List[Image.Image] = []
+        frames = []
         for row in range(rows):
             for col in range(cols):
                 x = col * frame_width

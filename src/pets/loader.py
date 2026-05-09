@@ -1,50 +1,18 @@
 """Load pet data from pet directories."""
 
 import json
-from dataclasses import dataclass, field
 from pathlib import Path
-from typing import List, Dict, Optional
+from typing import List
+
+from src.pets.models import Pet, AnimationDef
 
 
 class PetLoadError(Exception):
     """Raised when a pet cannot be loaded."""
 
 
-@dataclass
-class AnimationDef:
-    """Definition of a single animation state."""
-    row: int
-    frames: int
-    fps: int
-    loop: bool
-
-
-@dataclass
-class Pet:
-    """A pet with its metadata and spritesheet."""
-
-    id: str
-    display_name: str
-    description: str
-    spritesheet_path: str
-    kind: str
-    frame_width: int = 64
-    frame_height: int = 64
-    animations: Dict[str, AnimationDef] = field(default_factory=dict)
-
-
 def load_pet(pet_dir: Path) -> Pet:
-    """Load a pet from a directory containing pet.json and spritesheet.
-
-    Args:
-        pet_dir: Path to the pet directory.
-
-    Returns:
-        Pet object with loaded data.
-
-    Raises:
-        PetLoadError: If pet.json is missing, invalid, or spritesheet not found.
-    """
+    """Load a pet from a directory containing pet.json and spritesheet."""
     pet_dir = Path(pet_dir)
     json_path = pet_dir / "pet.json"
 
@@ -65,8 +33,7 @@ def load_pet(pet_dir: Path) -> Pet:
     if not spritesheet.exists():
         raise PetLoadError(f"Spritesheet not found: {spritesheet}")
 
-    # Parse animations if present
-    animations: Dict[str, AnimationDef] = {}
+    animations = {}
     for name, anim_data in data.get("animations", {}).items():
         animations[name] = AnimationDef(
             row=anim_data["row"],
@@ -88,16 +55,9 @@ def load_pet(pet_dir: Path) -> Pet:
 
 
 def list_pets(pets_root: Path) -> List[Pet]:
-    """Discover all valid pets under a root directory.
-
-    Args:
-        pets_root: Path to the pets/ directory.
-
-    Returns:
-        List of Pet objects for all valid pet directories.
-    """
+    """Discover all valid pets under a root directory."""
     pets_root = Path(pets_root)
-    pets: List[Pet] = []
+    pets = []
 
     if not pets_root.is_dir():
         return pets

@@ -1,8 +1,8 @@
 """Tests for the pet message system."""
 
 import pytest
-from src.messages import MessageProvider, get_message
-from src.timer import TimerPhase
+from src.core.messages import MessageProvider, get_message
+from src.core.timer import TimerPhase
 
 
 class TestMessageProvider:

@@ -2,7 +2,7 @@
 
 All notable changes to Pomo Pet are documented here.
 
-## [0.1.0] — 2026-05-10
+## [1.0.0] — 2026-05-10
 
 ### Added
 
