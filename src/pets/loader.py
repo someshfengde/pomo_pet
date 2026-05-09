@@ -46,7 +46,7 @@ def load_pet(pet_dir: Path) -> Pet:
         id=data["id"],
         display_name=data["displayName"],
         description=data["description"],
-        spritesheet_path=data["spritesheetPath"],
+        spritesheet_path=str(spritesheet.resolve()),
         kind=data["kind"],
         frame_width=data.get("frameWidth", 64),
         frame_height=data.get("frameHeight", 64),

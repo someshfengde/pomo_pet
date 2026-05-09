@@ -22,19 +22,6 @@ def get_pets_dir() -> Path:
     return Path(__file__).parent.parent / "pets"
 
 
-def _resolve_spritesheet(pet, pets_dir: Path) -> None:
-    """Resolve the pet's spritesheet path to an absolute path."""
-    for entry in pets_dir.iterdir():
-        if entry.is_dir() and (entry / "pet.json").exists():
-            try:
-                data = json.loads((entry / "pet.json").read_text())
-                if data.get("id") == pet.id:
-                    pet.spritesheet_path = str(entry / pet.spritesheet_path)
-                    return
-            except Exception:
-                continue
-
-
 @click.command()
 @click.option("--pet", "pet_name", default=None, help="Pet to display (e.g., avocado)")
 @click.option("--work", "work_minutes", default=25, type=int, help="Work session duration in minutes (default: 25)")
@@ -80,8 +67,6 @@ def cli(pet_name, work_minutes, break_minutes, list_pets_flag, stats_flag, no_so
     if pet is None:
         click.echo(f"Error: Pet '{pet_name}' not found. Use --list-pets to see available pets.", err=True)
         sys.exit(1)
-
-    _resolve_spritesheet(pet, get_pets_dir())
 
     # Stats
     store = StatsStore()
