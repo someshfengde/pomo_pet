@@ -59,7 +59,7 @@ def _set_nswindow_opaque(window_id: int, opaque: bool) -> None:
 
 
 # ---------------------------------------------------------------------------
-# PetWindow — transparent, pet-only
+# PetWindow
 # ---------------------------------------------------------------------------
 
 class PetWindow(QMainWindow):
@@ -73,7 +73,7 @@ class PetWindow(QMainWindow):
         self.timer_text: str = "25:00"
         self.timer_phase: str = "WORK"
         self.timer_progress: float = 0.0
-        self.message: str = ""
+        self.message: str = "Let's focus!"
         self.sessions: int = 0
         self.paused: bool = False
 
@@ -105,16 +105,13 @@ class PetWindow(QMainWindow):
 
     @staticmethod
     def _calc_display_size(sprite_w: int, sprite_h: int) -> tuple[int, int]:
-        """Calculate display size for the sprite + timer area.
-
-        Target: ~120px wide for the sprite, extra height for timer below.
-        """
-        target_w = 120
+        """Calculate display size: 160px wide, sprite + UI area tall."""
+        target_w = 160
         scale = target_w / max(sprite_w, sprite_h)
         display_w = int(sprite_w * scale)
         display_h = int(sprite_h * scale)
-        # Add space for timer (40px) + message (20px) + padding (20px)
-        total_h = display_h + 80
+        # Extra height: pet name (16) + timer (22) + progress (8) + anim label (14) + message (16) + padding (14)
+        total_h = display_h + 90
         return display_w, total_h
 
     def _setup_window(self) -> None:
@@ -126,11 +123,10 @@ class PetWindow(QMainWindow):
         self.setAttribute(Qt.WA_TranslucentBackground)
         self.setAttribute(Qt.WA_NoSystemBackground)
 
-        # Intelligent sizing based on sprite dimensions
         sprite_w = self.pet.frame_width
         sprite_h = self.pet.frame_height
         display_w, display_h = self._calc_display_size(sprite_w, sprite_h)
-        self._sprite_scale = display_w / sprite_w  # fractional scale
+        self._sprite_scale = display_w / sprite_w
         self.setFixedSize(display_w, display_h)
         self.move(100, 100)
 
@@ -139,7 +135,7 @@ class PetWindow(QMainWindow):
         if sys.platform == "darwin":
             try:
                 nswindow_ptr = int(self.winId())
-                _set_nswindow_level(nswindow_ptr, 3)  # NSFloatingWindowLevel
+                _set_nswindow_level(nswindow_ptr, 3)
                 _set_nswindow_opaque(nswindow_ptr, False)
             except Exception:
                 pass
@@ -150,7 +146,7 @@ class PetWindow(QMainWindow):
         t.start(1000 // self.config.fps)
 
     # ------------------------------------------------------------------
-    # Animations — load from pet.json
+    # Animations
     # ------------------------------------------------------------------
 
     def _load_animations(self) -> None:
@@ -166,7 +162,6 @@ class PetWindow(QMainWindow):
         self._anim_defs = dict(self.pet.animations) if self.pet.animations else {}
 
         if not self._anim_defs:
-            # Fallback: treat as single idle animation
             cols = max(sheet.width() // fw, 1)
             rows = max(sheet.height() // fh, 1)
             frames = []
@@ -178,9 +173,8 @@ class PetWindow(QMainWindow):
             self._anim_defs["idle"] = AnimationDef(row=0, frames=len(frames), fps=8, loop=True)
             return
 
-        # Load each animation and scale to display size
         display_w = self.width()
-        display_h = self.height()
+        display_h = self.height() - 90  # sprite area only
         for name, ad in self._anim_defs.items():
             frames = []
             for col in range(ad.frames):
@@ -234,6 +228,8 @@ class PetWindow(QMainWindow):
         self.timer_progress = max(0.0, min(1.0, progress))
 
     def set_message(self, message: str) -> None:
+        if message != self.message:
+            self._message_slide = 0.0
         self.message = message
 
     def set_sessions(self, count: int) -> None:
@@ -305,7 +301,7 @@ class PetWindow(QMainWindow):
         frames = self._animations.get(self._current_anim, [])
         if frames:
             ad = self._anim_defs.get(self._current_anim)
-            fps = ad.fps if ad else 8  # fps from pet.json
+            fps = ad.fps if ad else 8
             self._frame_timer += dt
             if self._frame_timer >= 1.0 / fps:
                 self._frame_timer = 0.0
@@ -370,70 +366,95 @@ class PetWindow(QMainWindow):
             self.quit_window()
 
     # ------------------------------------------------------------------
-    # Paint — pet sprite + timer + progress + message
+    # Paint — uses pet.json metadata for display
     # ------------------------------------------------------------------
 
     def paintEvent(self, event) -> None:
         p = QPainter(self)
-        p.setRenderHint(QPainter.Antialiasing)
-        p.setRenderHint(QPainter.TextAntialiasing)
+        try:
+            p.setRenderHint(QPainter.Antialiasing)
+            p.setRenderHint(QPainter.TextAntialiasing)
 
-        W = self.width()
-        H = self.height()
+            W = self.width()
+            H = self.height()
 
-        # Clear to fully transparent
-        p.setCompositionMode(QPainter.CompositionMode_Source)
-        p.fillRect(QRect(0, 0, W, H), QColor(0, 0, 0, 0))
-        p.setCompositionMode(QPainter.CompositionMode_SourceOver)
+            # Clear to fully transparent
+            p.setCompositionMode(QPainter.CompositionMode_Source)
+            p.fillRect(QRect(0, 0, W, H), QColor(0, 0, 0, 0))
+            p.setCompositionMode(QPainter.CompositionMode_SourceOver)
 
-        is_work = self.timer_phase == "WORK"
-        timer_color = QColor(52, 199, 89) if is_work else QColor(90, 200, 245)
-        dim_color = QColor(140, 140, 148)
+            is_work = self.timer_phase == "WORK"
+            timer_color = QColor(52, 199, 89) if is_work else QColor(90, 200, 245)
+            dim_color = QColor(140, 140, 148)
+            y = 0
 
-        # --- Pet sprite (top area) ---
-        frames = self._animations.get(self._current_anim, [])
-        sprite_h = 0
-        if frames and self._frame_index < len(frames):
-            frame = frames[self._frame_index]
-            sprite_h = frame.height()
-            x = (W - frame.width()) // 2
-            p.drawPixmap(x, 0, frame)
+            # --- Pet name (from pet.json displayName) ---
+            name_font = QFont("Helvetica Neue", 10)
+            name_font.setBold(True)
+            p.setFont(name_font)
+            p.setPen(QPen(QColor(200, 200, 200)))
+            name_rect = QRect(0, y, W, 14)
+            p.drawText(name_rect, Qt.AlignHCenter, self.pet.display_name)
+            y += 16
 
-        # --- Timer text ---
-        y = sprite_h + 4
-        timer_font = QFont("Helvetica Neue", 16)
-        timer_font.setBold(True)
-        p.setFont(timer_font)
-        p.setPen(QPen(timer_color))
-        timer_rect = QRect(0, y, W, 20)
-        p.drawText(timer_rect, Qt.AlignHCenter, self.timer_text)
+            # --- Pet sprite ---
+            frames = self._animations.get(self._current_anim, [])
+            sprite_h = 0
+            if frames and self._frame_index < len(frames):
+                frame = frames[self._frame_index]
+                sprite_h = frame.height()
+                x = (W - frame.width()) // 2
+                p.drawPixmap(x, y, frame)
+            y += sprite_h + 4
 
-        # --- Progress bar ---
-        y += 22
-        bar_x = 8
-        bar_w = W - 16
-        bar_h = 3
-        bar_r = bar_h // 2
+            # --- Timer text ---
+            timer_font = QFont("Helvetica Neue", 18)
+            timer_font.setBold(True)
+            p.setFont(timer_font)
+            p.setPen(QPen(timer_color))
+            timer_rect = QRect(0, y, W, 22)
+            p.drawText(timer_rect, Qt.AlignHCenter, self.timer_text)
+            y += 24
 
-        # Track
-        p.setPen(Qt.NoPen)
-        p.setBrush(QBrush(QColor(255, 255, 255, 15)))
-        p.drawRoundedRect(QRect(bar_x, y, bar_w, bar_h), bar_r, bar_r)
+            # --- Progress bar ---
+            bar_x = 10
+            bar_w = W - 20
+            bar_h = 3
+            bar_r = bar_h // 2
 
-        # Fill
-        fill_w = int(bar_w * self.timer_progress)
-        if fill_w > 0:
-            p.setBrush(QBrush(timer_color))
-            p.drawRoundedRect(QRect(bar_x, y, fill_w, bar_h), bar_r, bar_r)
+            p.setPen(Qt.NoPen)
+            p.setBrush(QBrush(QColor(255, 255, 255, 15)))
+            p.drawRoundedRect(QRect(bar_x, y, bar_w, bar_h), bar_r, bar_r)
 
-        # --- Message ---
-        y += 10
-        if self.message:
-            display_msg = self.message[:20] + ("..." if len(self.message) > 20 else "")
-            msg_font = QFont("Helvetica Neue", 9)
-            p.setFont(msg_font)
-            p.setPen(QPen(dim_color))
-            msg_rect = QRect(0, y, W, 14)
-            p.drawText(msg_rect, Qt.AlignHCenter, display_msg)
+            fill_w = int(bar_w * self.timer_progress)
+            if fill_w > 0:
+                p.setBrush(QBrush(timer_color))
+                p.drawRoundedRect(QRect(bar_x, y, fill_w, bar_h), bar_r, bar_r)
+            y += 10
 
-        p.end()
+            # --- Animation state label (from pet.json) ---
+            anim_label = self._current_anim.replace("_", " ").title()
+            ad = self._anim_defs.get(self._current_anim)
+            if ad:
+                anim_info = f"{anim_label} · {ad.fps}fps"
+            else:
+                anim_info = anim_label
+
+            anim_font = QFont("Helvetica Neue", 8)
+            p.setFont(anim_font)
+            p.setPen(QPen(QColor(100, 100, 108)))
+            anim_rect = QRect(0, y, W, 12)
+            p.drawText(anim_rect, Qt.AlignHCenter, anim_info)
+            y += 14
+
+            # --- Message ---
+            if self.message:
+                display_msg = self.message[:24] + ("..." if len(self.message) > 24 else "")
+                msg_font = QFont("Helvetica Neue", 9)
+                p.setFont(msg_font)
+                p.setPen(QPen(dim_color))
+                msg_rect = QRect(0, y, W, 14)
+                p.drawText(msg_rect, Qt.AlignHCenter, display_msg)
+
+        finally:
+            p.end()

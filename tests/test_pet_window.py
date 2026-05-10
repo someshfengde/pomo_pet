@@ -73,35 +73,35 @@ def _dblclick(x, y):
 
 class TestCalcDisplaySize:
     def test_192px_sprite(self):
-        """192px sprite: 120px wide, 120px sprite + 80px timer = 200px tall."""
+        """192px sprite: 160px wide, 160px sprite + 90px UI = 250px tall."""
         w, h = PetWindow._calc_display_size(192, 192)
-        assert w == 120
-        assert h == 200  # 120 sprite + 80 timer area
+        assert w == 160
+        assert h == 250
 
     def test_64px_sprite(self):
-        """64px sprite scales up to 120px wide."""
+        """64px sprite scales up to 160px wide."""
         w, h = PetWindow._calc_display_size(64, 64)
-        assert w == 120
-        assert h == 200  # 120 sprite + 80 timer area
+        assert w == 160
+        assert h == 250
 
     def test_256px_sprite(self):
-        """256px sprite scales down to 120px wide."""
+        """256px sprite scales down to 160px wide."""
         w, h = PetWindow._calc_display_size(256, 256)
-        assert w == 120
-        assert h == 200
+        assert w == 160
+        assert h == 250
 
     def test_rectangular(self):
         """Rectangular sprite maintains aspect ratio."""
         w, h = PetWindow._calc_display_size(192, 96)
-        assert w == 120
-        assert h == 140  # 60 sprite + 80 timer area
+        assert w == 160
+        assert h == 170  # 80 sprite + 90 UI
 
 
 class TestWindowSetup:
     def test_window_size(self, window):
-        """192px sprite → 120x200 window."""
-        assert window.width() == 120
-        assert window.height() == 200
+        """192px sprite → 160x250 window."""
+        assert window.width() == 160
+        assert window.height() == 250
 
     def test_initial_state(self, window):
         assert window._current_anim == "idle"
@@ -122,9 +122,8 @@ class TestAnimationSystem:
         assert len(window._animations["run_right"]) == 8
 
     def test_frames_scaled_to_display(self, window):
-        """Frames are scaled to display width."""
         frame = window._animations["idle"][0]
-        assert frame.width() == 120
+        assert frame.width() == 160
 
     def test_fps_from_pet_json(self, window):
         assert window._anim_defs["idle"].fps == 8
