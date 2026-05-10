@@ -1,6 +1,6 @@
 [project]
 name = "pomo-pet"
-version = "1.0.0"
+version = "1.2.3"
 description = "A Pomodoro timer with cute digital pets"
 readme = "README.md"
 requires-python = ">=3.13"

@@ -82,11 +82,25 @@ jobs:
           echo "Tag ${{ steps.tag.outputs.tag }} already exists — skipping release."
           exit 0
 
-      - name: Create tag
+      - name: Update version in pyproject.toml
+        if: steps.tag.outputs.exists != 'true'
+        run: |
+          VERSION="${{ steps.tag.outputs.version }}"
+          sed -i "s/^version = \".*\"/version = \"$VERSION\"/" pyproject.toml
+          echo "Updated pyproject.toml to version $VERSION"
+
+      - name: Regenerate uv lockfile
+        if: steps.tag.outputs.exists != 'true'
+        run: uv lock
+
+      - name: Commit version bump and create tag
         if: steps.tag.outputs.exists != 'true'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add pyproject.toml uv.lock
+          git commit -m "chore: bump version to ${{ steps.tag.outputs.version }}"
+          git push origin HEAD
           git tag -a "${{ steps.tag.outputs.tag }}" -m "Release ${{ steps.tag.outputs.tag }}"
           git push origin "${{ steps.tag.outputs.tag }}"
 
