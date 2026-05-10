@@ -22,9 +22,10 @@ class TestFullWorkflow:
         assert result.exit_code == 0
         assert "avocado" in result.output.lower()
 
+    @patch("src.cli.os.fork", return_value=12345)
     @patch("src.cli.QApplication")
     @patch("src.cli.PetWindow")
-    def test_start_default(self, mock_w, mock_q, runner):
+    def test_start_default(self, mock_w, mock_q, mock_fork, runner):
         mock_w.return_value = MagicMock()
         result = runner.invoke(cli, ["start"])
         assert result.exit_code == 0

@@ -1,6 +1,7 @@
 """CLI entry point for Pomo Pet."""
 
 import json
+import os
 import sys
 import time
 from pathlib import Path
@@ -85,6 +86,20 @@ def _start_pet(pet_name: str, work_minutes: int, break_minutes: int, no_sound: b
         last_phase = timer.phase
         if not no_sound:
             play_click()
+
+    # Fork to background so terminal is freed immediately
+    pid = os.fork()
+    if pid > 0:
+        # Parent: print info and exit
+        click.echo(f"{pet.display_name} running in background (PID {pid})")
+        click.echo("Drag to move · Click to pause · Double-click to reset")
+        return
+
+    # Child: detach from terminal and run the Qt app
+    os.setsid()
+    # Close stdin so terminal input isn't stolen
+    devnull = os.open(os.devnull, os.O_RDWR)
+    os.dup2(devnull, 0)
 
     app = QApplication(sys.argv)
     window = PetWindow(pet=pet)

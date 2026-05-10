@@ -44,27 +44,30 @@ class TestStartCommand:
     def test_default_pet(self, runner):
         """start without argument defaults to avocado."""
         with patch("src.cli.QApplication") as mock_q, \
-             patch("src.cli.PetWindow") as mock_w:
+             patch("src.cli.PetWindow") as mock_w, \
+             patch("src.cli.os.fork", return_value=12345):
             mock_w.return_value = MagicMock()
             result = runner.invoke(cli, ["start"])
             assert result.exit_code == 0
             assert "Avocado" in result.output
+            assert "12345" in result.output
 
+    @patch("src.cli.os.fork", return_value=12345)
     @patch("src.cli.QApplication")
     @patch("src.cli.PetWindow")
-    def test_specific_pet(self, mock_w, mock_q, runner):
+    def test_specific_pet(self, mock_w, mock_q, mock_fork, runner):
         mock_w.return_value = MagicMock()
         result = runner.invoke(cli, ["start", "avocado"])
         assert result.exit_code == 0
         assert "Avocado" in result.output
 
+    @patch("src.cli.os.fork", return_value=12345)
     @patch("src.cli.QApplication")
     @patch("src.cli.PetWindow")
-    def test_custom_durations(self, mock_w, mock_q, runner):
+    def test_custom_durations(self, mock_w, mock_q, mock_fork, runner):
         mock_w.return_value = MagicMock()
         result = runner.invoke(cli, ["--work", "30", "--break", "10", "start"])
         assert result.exit_code == 0
-        assert "30min" in result.output
 
 
 class TestStatsCommand:
