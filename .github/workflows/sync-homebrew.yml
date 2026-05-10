@@ -1,0 +1,60 @@
+name: Sync Homebrew Formula
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+jobs:
+  sync-formula:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main repo
+        uses: actions/checkout@v4
+
+      - name: Get release info
+        id: release
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+          # Download the release tarball and compute SHA256
+          TARBALL_URL="https://github.com/${{ github.repository }}/archive/refs/tags/${GITHUB_REF_NAME}.tar.gz"
+          SHA256=$(curl -sL "$TARBALL_URL" | sha256sum | awk '{print $1}')
+          echo "sha256=$SHA256" >> "$GITHUB_OUTPUT"
+          echo "tarball_url=$TARBALL_URL" >> "$GITHUB_OUTPUT"
+
+      - name: Update formula
+        run: |
+          VERSION="${{ steps.release.outputs.version }}"
+          SHA256="${{ steps.release.outputs.sha256 }}"
+          TARBALL_URL="${{ steps.release.outputs.tarball_url }}"
+
+          # Update the formula in the main repo
+          sed -i "s|url \".*\"|url \"$TARBALL_URL\"|" Formula/pomo-pet.rb
+          sed -i "s|sha256 \".*\"|sha256 \"$SHA256\"|" Formula/pomo-pet.rb
+          sed -i "s|version \".*\"|version \"$VERSION\"|" Formula/pomo-pet.rb
+
+          echo "Updated formula:"
+          cat Formula/pomo-pet.rb
+
+      - name: Push to tap repo
+        env:
+          TAP_TOKEN: ${{ secrets.TAP_PUSH_TOKEN }}
+        run: |
+          if [ -z "$TAP_TOKEN" ]; then
+            echo "TAP_PUSH_TOKEN secret not set. Skipping tap sync."
+            echo "To set up: create a PAT with 'repo' scope, add as TAP_PUSH_TOKEN secret."
+            exit 0
+          fi
+
+          git clone "https://x-access-token:${TAP_TOKEN}@github.com/someshfengde/homebrew-pomo-pet.git" /tmp/tap
+          cp Formula/pomo-pet.rb /tmp/tap/Formula/pomo-pet.rb
+          cd /tmp/tap
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --quiet && echo "No changes to push" && exit 0
+          git commit -m "Update pomo-pet to v${{ steps.release.outputs.version }}"
+          git push origin main
+          echo "Tap updated!"
