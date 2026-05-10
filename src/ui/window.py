@@ -6,7 +6,7 @@ from typing import Optional, Any, List, Dict
 
 from PySide6.QtWidgets import QMainWindow, QApplication
 from PySide6.QtCore import Qt, QTimer, QPoint, QRect
-from PySide6.QtGui import QPainter, QPixmap, QColor, QFont, QPen, QBrush
+from PySide6.QtGui import QPainter, QPixmap, QColor, QFont, QPen, QBrush, QShortcut, QKeySequence
 
 from src.pets.models import AnimationDef
 from src.ui.theme import WindowConfig
@@ -64,6 +64,7 @@ class PetWindow(QMainWindow):
         self._setup_window()
         self._load_animations()
         self._setup_timer()
+        self._setup_shortcuts()
 
     @staticmethod
     def _calc_display_size(sprite_w: int, sprite_h: int) -> tuple[int, int]:
@@ -150,6 +151,28 @@ class PetWindow(QMainWindow):
         t = QTimer(self)
         t.timeout.connect(self._tick)
         t.start(1000 // self.config.fps)
+
+    def _setup_shortcuts(self) -> None:
+        """Global keyboard shortcuts — Cmd+Shift+P/R/Q on macOS."""
+        # Pause / Resume
+        sc_pause = QShortcut(QKeySequence("Ctrl+Shift+P"), self)
+        sc_pause.activated.connect(self._shortcut_toggle_pause)
+
+        # Reset
+        sc_reset = QShortcut(QKeySequence("Ctrl+Shift+R"), self)
+        sc_reset.activated.connect(self._shortcut_reset)
+
+        # Quit
+        sc_quit = QShortcut(QKeySequence("Ctrl+Shift+Q"), self)
+        sc_quit.activated.connect(self.quit_window)
+
+    def _shortcut_toggle_pause(self) -> None:
+        if self._on_toggle_pause:
+            self._on_toggle_pause()
+
+    def _shortcut_reset(self) -> None:
+        if self._on_reset:
+            self._on_reset()
 
     # ------------------------------------------------------------------
     # Animations
@@ -371,6 +394,18 @@ class PetWindow(QMainWindow):
     def keyPressEvent(self, event) -> None:
         if event.key() in (Qt.Key_Escape, Qt.Key_Q):
             self.quit_window()
+
+    def enterEvent(self, event) -> None:
+        """Mouse enters window — play waving animation."""
+        if "waving" in self._animations and not self._pending_anim:
+            self._play_once("waving")
+        super().enterEvent(event)
+
+    def leaveEvent(self, event) -> None:
+        """Mouse leaves window — return to phase-appropriate animation."""
+        if not self._pending_anim:
+            self._set_animation(self._pick_animation(self.timer_phase))
+        super().leaveEvent(event)
 
     # ------------------------------------------------------------------
     # Paint — uses pet.json metadata for display

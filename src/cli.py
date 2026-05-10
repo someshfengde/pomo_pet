@@ -13,6 +13,7 @@ from src.pets.loader import list_pets
 from src.core.timer import PomodoroTimer, TimerPhase
 from src.core.messages import get_message
 from src.core.stats import StatsStore
+from src.core.config import Config
 from src.ui.window import PetWindow
 from src.ui.sounds import play_phase_change, play_session_complete, play_click
 from src.ui.notifications import notify_session_complete, notify_break_over
@@ -109,15 +110,28 @@ def _start_pet(pet_name: str, work_minutes: int, break_minutes: int, no_sound: b
 
 @click.group(invoke_without_command=True)
 @click.pass_context
-@click.option("--work", "work_minutes", default=25, type=int, help="Work duration (min)")
-@click.option("--break", "break_minutes", default=5, type=int, help="Break duration (min)")
+@click.option("--work", "work_minutes", default=None, type=int, help="Work duration (min)")
+@click.option("--break", "break_minutes", default=None, type=int, help="Break duration (min)")
 @click.option("--no-sound", is_flag=True, help="Disable sounds")
 def cli(ctx, work_minutes, break_minutes, no_sound):
     """Pomo Pet - Pomodoro timer with animated pets."""
     ctx.ensure_object(dict)
-    ctx.obj["work"] = work_minutes
-    ctx.obj["break"] = break_minutes
-    ctx.obj["no_sound"] = no_sound
+    cfg = Config.load()
+    ctx.obj["config"] = cfg
+    ctx.obj["work"] = work_minutes if work_minutes is not None else cfg.work_minutes
+    ctx.obj["break"] = break_minutes if break_minutes is not None else cfg.break_minutes
+    ctx.obj["no_sound"] = no_sound if no_sound else not cfg.sound_enabled
+
+    # Save overrides to config when user passes them explicitly
+    if work_minutes is not None or break_minutes is not None or no_sound:
+        updates = {}
+        if work_minutes is not None:
+            updates["work_minutes"] = work_minutes
+        if break_minutes is not None:
+            updates["break_minutes"] = break_minutes
+        if no_sound:
+            updates["sound_enabled"] = False
+        cfg.update(**updates)
 
     if ctx.invoked_subcommand is None:
         # No subcommand → show help
@@ -125,18 +139,20 @@ def cli(ctx, work_minutes, break_minutes, no_sound):
 
 
 @cli.command()
-@click.argument("pet_name", default="avocado")
+@click.argument("pet_name", default=None)
 @click.pass_context
 def start(ctx, pet_name):
-    """Start a pet. Default: avocado.
+    """Start a pet. Default: from config (avocado).
 
     \b
     Examples:
-      pomo-pet start              # Launch avocado
+      pomo-pet start              # Launch default pet
       pomo-pet start avocado      # Launch avocado
-      pomo-pet start --work 30    # 30min work sessions
+      pomo-pet --work 30 start    # 30min work sessions
     """
-    _start_pet(pet_name, ctx.obj["work"], ctx.obj["break"], ctx.obj["no_sound"])
+    cfg = ctx.obj["config"]
+    pet = pet_name or cfg.default_pet
+    _start_pet(pet, ctx.obj["work"], ctx.obj["break"], ctx.obj["no_sound"])
 
 
 @cli.command("list")
@@ -160,3 +176,54 @@ def stats():
     click.echo(f"Focus time:    {s.total_hours}h ({s.total_focus_minutes}min)")
     click.echo(f"Streak:        {s.current_streak} (best: {s.best_streak})")
     click.echo(f"Today:         {s.daily_sessions} sessions")
+
+
+@cli.command("config")
+@click.argument("key", required=False)
+@click.argument("value", required=False)
+def config_cmd(key, value):
+    """View or set config values.
+
+    \b
+    Examples:
+      pomo-pet config                    # Show all config
+      pomo-pet config default_pet cat    # Set default pet
+      pomo-pet config work_minutes 30    # Set work duration
+      pomo-pet config volume 50          # Set volume (0-100)
+    """
+    cfg = Config.load()
+    if key is None:
+        click.echo(f"Config file: {cfg.__class__.__module__}")
+        click.echo(f"  default_pet:   {cfg.default_pet}")
+        click.echo(f"  work_minutes:  {cfg.work_minutes}")
+        click.echo(f"  break_minutes: {cfg.break_minutes}")
+        click.echo(f"  volume:        {cfg.volume}")
+        click.echo(f"  sound_enabled: {cfg.sound_enabled}")
+        click.echo(f"  messages_file: {cfg.messages_file or '(none)'}")
+        return
+
+    if value is None:
+        val = getattr(cfg, key, None)
+        if val is None:
+            click.echo(f"Unknown key: {key}", err=True)
+            sys.exit(1)
+        click.echo(f"{key} = {val}")
+        return
+
+    # Convert value to the right type
+    field_types = {f.name: f.type for f in cfg.__dataclass_fields__.values()}
+    if key not in field_types:
+        click.echo(f"Unknown key: {key}. Valid: {', '.join(field_types)}", err=True)
+        sys.exit(1)
+
+    # Cast to correct type
+    ft = field_types[key]
+    if ft == "int":
+        value = int(value)
+    elif ft == "bool":
+        value = value.lower() in ("true", "1", "yes")
+    elif ft == "Optional[str]":
+        value = value if value != "none" else None
+
+    cfg.update(**{key: value})
+    click.echo(f"Set {key} = {value}")
