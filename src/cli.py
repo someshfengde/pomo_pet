@@ -8,17 +8,15 @@ import time
 from pathlib import Path
 
 import click
-from PySide6.QtWidgets import QApplication
 
 _FOREGROUND_ENV = "_POMO_PET_FOREGROUND"
 
 from src.pets.loader import list_pets
 from src.core.timer import PomodoroTimer, TimerPhase
-from src.core.messages import get_message
+from src.core.messages import get_message, load_custom_messages
 from src.core.stats import StatsStore
 from src.core.config import Config
-from src.ui.window import PetWindow
-from src.ui.sounds import play_phase_change, play_session_complete, play_click
+from src.ui.sounds import play_phase_change, play_session_complete, play_click, set_volume
 from src.ui.notifications import notify_session_complete, notify_break_over
 
 
@@ -33,6 +31,38 @@ def _start_pet(pet_name: str, work_minutes: int, break_minutes: int, no_sound: b
     if pet is None:
         click.echo(f"Pet '{pet_name}' not found. Run 'pomo-pet list' to see available pets.", err=True)
         sys.exit(1)
+
+    # ── Parent process: spawn child and exit BEFORE loading Qt ──
+    # PySide6/Qt starts CoreFoundation threads at import time.
+    # subprocess.Popen does fork+exec internally; if Qt threads exist
+    # in the parent, the forked child crashes with SIGSEGV because
+    # CoreFoundation is not fork-safe on macOS.
+    if not os.environ.get(_FOREGROUND_ENV):
+        env = os.environ.copy()
+        env[_FOREGROUND_ENV] = "1"
+        # Find the correct Python with PySide6 — may be in a venv managed by uv
+        venv = os.environ.get("VIRTUAL_ENV")
+        if venv:
+            python_bin = os.path.join(venv, "bin", "python")
+        else:
+            python_bin = sys.executable
+
+        proc = subprocess.Popen(
+            [python_bin, "-m", "src", "start", pet_name],
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            start_new_session=True,
+            cwd=os.getcwd(),
+            env=env,
+        )
+        click.echo(f"{pet.display_name} running in background (PID {proc.pid})")
+        click.echo("Drag to move · Click to pause · Double-click to reset")
+        return
+
+    # ── Foreground child process: safe to import Qt now ──
+    from PySide6.QtWidgets import QApplication
+    from src.ui.window import PetWindow
 
     store = StatsStore()
     click.echo(f"Starting {pet.display_name} | Work: {work_minutes}min | Break: {break_minutes}min")
@@ -91,44 +121,20 @@ def _start_pet(pet_name: str, work_minutes: int, break_minutes: int, no_sound: b
         if not no_sound:
             play_click()
 
-    # If we're the foreground child process, run Qt directly
-    if os.environ.get(_FOREGROUND_ENV):
-        app = QApplication(sys.argv)
-        window = PetWindow(pet=pet)
-        window.run(timer_getter=timer_getter, on_toggle_pause=on_toggle_pause, on_reset=on_reset)
-        app.exec()
-        return
-
-    # Parent: spawn a fresh Python process (NOT os.fork — macOS CoreFoundation is not fork-safe)
-    env = os.environ.copy()
-    env[_FOREGROUND_ENV] = "1"
-    # Find the correct Python with PySide6 — may be in a venv managed by uv
-    venv = os.environ.get("VIRTUAL_ENV")
-    if venv:
-        python_bin = os.path.join(venv, "bin", "python")
-    else:
-        python_bin = sys.executable
-
-    proc = subprocess.Popen(
-        [python_bin, "-m", "src", "start", pet_name],
-        stdin=subprocess.DEVNULL,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-        start_new_session=True,
-        cwd=os.getcwd(),
-        env=env,
-    )
-    click.echo(f"{pet.display_name} running in background (PID {proc.pid})")
-    click.echo("Drag to move · Click to pause · Double-click to reset")
-    return
+    app = QApplication(sys.argv)
+    window = PetWindow(pet=pet)
+    window.run(timer_getter=timer_getter, on_toggle_pause=on_toggle_pause, on_reset=on_reset)
+    app.exec()
 
 
 @click.group(invoke_without_command=True)
 @click.pass_context
 @click.option("--work", "work_minutes", default=None, type=int, help="Work duration (min)")
 @click.option("--break", "break_minutes", default=None, type=int, help="Break duration (min)")
+@click.option("--volume", default=None, type=int, help="Sound volume (0-100)")
 @click.option("--no-sound", is_flag=True, help="Disable sounds")
-def cli(ctx, work_minutes, break_minutes, no_sound):
+@click.option("--messages-file", default=None, type=click.Path(exists=True), help="Custom messages file (one per line)")
+def cli(ctx, work_minutes, break_minutes, volume, no_sound, messages_file):
     """Pomo Pet - Pomodoro timer with animated pets."""
     ctx.ensure_object(dict)
     cfg = Config.load()
@@ -137,15 +143,28 @@ def cli(ctx, work_minutes, break_minutes, no_sound):
     ctx.obj["break"] = break_minutes if break_minutes is not None else cfg.break_minutes
     ctx.obj["no_sound"] = no_sound if no_sound else not cfg.sound_enabled
 
+    # Apply volume from config or CLI flag
+    vol = volume if volume is not None else cfg.volume
+    set_volume(0 if no_sound else vol)
+
+    # Load custom messages from CLI flag or config
+    msg_file = messages_file or cfg.messages_file
+    if msg_file:
+        load_custom_messages(msg_file)
+
     # Save overrides to config when user passes them explicitly
-    if work_minutes is not None or break_minutes is not None or no_sound:
-        updates = {}
-        if work_minutes is not None:
-            updates["work_minutes"] = work_minutes
-        if break_minutes is not None:
-            updates["break_minutes"] = break_minutes
-        if no_sound:
-            updates["sound_enabled"] = False
+    updates = {}
+    if work_minutes is not None:
+        updates["work_minutes"] = work_minutes
+    if break_minutes is not None:
+        updates["break_minutes"] = break_minutes
+    if volume is not None:
+        updates["volume"] = volume
+    if no_sound:
+        updates["sound_enabled"] = False
+    if messages_file is not None:
+        updates["messages_file"] = messages_file
+    if updates:
         cfg.update(**updates)
 
     if ctx.invoked_subcommand is None:

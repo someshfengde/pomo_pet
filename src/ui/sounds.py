@@ -7,13 +7,28 @@ from pathlib import Path
 
 _SOUNDS_DIR = Path(__file__).parent.parent.parent / "assets" / "sounds"
 
+# Volume: 0 (mute) to 100 (max). afplay -v uses 0.0-1.0+ scale.
+_volume: int = 80
+
+
+def set_volume(vol: int) -> None:
+    """Set playback volume (0-100)."""
+    global _volume
+    _volume = max(0, min(100, vol))
+
+
+def get_volume() -> int:
+    return _volume
+
 
 def _play_file(path: Path) -> None:
     """Play a sound file in a background thread."""
-    if path.exists():
+    if path.exists() and _volume > 0:
+        # afplay -v expects a float; 1.0 = normal, 0.5 = half, etc.
+        vol_scale = _volume / 100.0
         threading.Thread(
             target=subprocess.run,
-            args=(["afplay", str(path)],),
+            args=(["afplay", "-v", str(vol_scale), str(path)],),
             kwargs={"capture_output": True},
             daemon=True,
         ).start()

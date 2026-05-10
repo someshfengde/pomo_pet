@@ -1,7 +1,8 @@
 """Pet dialog/message system based on timer phase."""
 
 import random
-from typing import List
+from pathlib import Path
+from typing import List, Optional
 
 from src.core.timer import TimerPhase
 
@@ -21,12 +22,27 @@ BREAK_MESSAGES = [
     "Relax, you're doing great!",
 ]
 
+# Custom messages loaded from file (one per line)
+_custom_messages: Optional[List[str]] = None
+
+
+def load_custom_messages(path: str) -> None:
+    """Load custom messages from a text file (one per line)."""
+    global _custom_messages
+    p = Path(path)
+    if p.exists():
+        lines = [l.strip() for l in p.read_text().splitlines() if l.strip()]
+        if lines:
+            _custom_messages = lines
+
 
 class MessageProvider:
     """Provides messages based on timer phase."""
 
     @staticmethod
     def get_messages(phase: TimerPhase) -> List[str]:
+        if _custom_messages:
+            return _custom_messages
         if phase == TimerPhase.WORK:
             return WORK_MESSAGES
         return BREAK_MESSAGES

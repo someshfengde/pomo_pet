@@ -43,38 +43,29 @@ class TestStartCommand:
 
     def test_default_pet(self, runner):
         """start without argument defaults to avocado."""
-        with patch("src.cli.QApplication") as mock_q, \
-             patch("src.cli.PetWindow") as mock_w, \
-             patch("src.cli.subprocess") as mock_sub:
+        with patch("src.cli.subprocess") as mock_sub:
             mock_proc = MagicMock()
             mock_proc.pid = 12345
             mock_sub.Popen.return_value = mock_proc
-            mock_w.return_value = MagicMock()
             result = runner.invoke(cli, ["start"])
             assert result.exit_code == 0
             assert "Avocado" in result.output
             assert "12345" in result.output
 
     @patch("src.cli.subprocess")
-    @patch("src.cli.QApplication")
-    @patch("src.cli.PetWindow")
-    def test_specific_pet(self, mock_w, mock_q, mock_sub, runner):
+    def test_specific_pet(self, mock_sub, runner):
         mock_proc = MagicMock()
         mock_proc.pid = 12345
         mock_sub.Popen.return_value = mock_proc
-        mock_w.return_value = MagicMock()
         result = runner.invoke(cli, ["start", "avocado"])
         assert result.exit_code == 0
         assert "Avocado" in result.output
 
     @patch("src.cli.subprocess")
-    @patch("src.cli.QApplication")
-    @patch("src.cli.PetWindow")
-    def test_custom_durations(self, mock_w, mock_q, mock_sub, runner):
+    def test_custom_durations(self, mock_sub, runner):
         mock_proc = MagicMock()
         mock_proc.pid = 12345
         mock_sub.Popen.return_value = mock_proc
-        mock_w.return_value = MagicMock()
         result = runner.invoke(cli, ["--work", "30", "--break", "10", "start"])
         assert result.exit_code == 0
 
