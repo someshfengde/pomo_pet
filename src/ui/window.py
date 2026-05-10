@@ -259,6 +259,12 @@ class PetWindow(QMainWindow):
         self._animate(dt)
         self.update()
 
+        # macOS: WindowStaysOnTopHint gets ignored when app loses focus.
+        # Re-show (without activating) every few ticks to stay on top.
+        self._top_tick = getattr(self, '_top_tick', 0) + 1
+        if self._top_tick % 5 == 0:
+            self.show()  # WA_ShowWithoutActivating prevents focus steal
+
     def _animate(self, dt: float) -> None:
         frames = self._animations.get(self._current_anim, [])
         if frames:
