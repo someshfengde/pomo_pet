@@ -11,4 +11,4 @@ test-all:
 	uv run pytest tests/ -v --cov=src --cov-report=term-missing
 
 run:
-	uv run pomo-pet --pet avocado
+	uv run pomo-pet start

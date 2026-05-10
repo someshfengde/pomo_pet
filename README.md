@@ -1,143 +1,60 @@
-<![CDATA[<div align="center">
-
 # 🐾 Pomo Pet
 
-**A Pomodoro timer with animated desktop pets**
-
-*Focus better. Break smarter. Pet your way to productivity.*
+**Pomodoro timer with animated desktop pets**
 
 [![Python 3.13+](https://img.shields.io/badge/python-3.13+-blue.svg?logo=python&logoColor=white)](https://python.org)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-109%20passed-brightgreen.svg)](#testing)
-[![Made with PySide6](https://img.shields.io/badge/Made%20with-PySide6-41CD52?logo=qt&logoColor=white)](https://doc.qt.io/qtforpython-6/)
+[![Tests](https://img.shields.io/badge/tests-120%20passed-brightgreen.svg)](#testing)
 
-<br/>
-
-```
-┌─────────────────────────────┐
-│   24:37                     │
-│   ══════════════░░░░░░░░░   │
-│   WORK  ● ● ● ○ ○ ○ ○ ○    │
-│                             │
-│         ┌─────────┐         │
-│         │  🥑     │         │
-│         │ animated│         │
-│         │  pet    │         │
-│         └─────────┘         │
-│                             │
-│       "Stay focused!"       │
-└─────────────────────────────┘
-```
-
-<br/>
-
-[Features](#features) · [Install](#installation) · [Usage](#usage) · [Controls](#controls) · [Add Pets](#adding-pets) · [Development](#development)
-
-</div>
-
----
-
-## ✨ Features
-
-| Feature | Description |
-|---------|-------------|
-| 🎬 **Animated Pets** | 9 animation states from Petdex-compatible spritesheets |
-| 🖱️ **Drag to Move** | Grab and drag your pet anywhere on screen |
-| ➡️ **Direction Reactions** | Drag left → run left. Drag right → run right. |
-| ⏱️ **Pomodoro Timer** | 25min work / 5min break (customizable) |
-| 📊 **Progress Bar** | Gradient bar fills as time passes |
-| ⏸️ **Click to Pause** | Single click toggles pause/play |
-| 🔄 **Double-Click Reset** | Double click resets current timer |
-| 🎭 **Smart Animations** | Pet reacts to timer events automatically |
-| 💬 **Motivational Messages** | Phase-aware messages change with work/break |
-| 🎯 **Session Tracking** | Gold dots track completed pomodoros |
-| 🌙 **Frosted Glass UI** | Dark, minimal, transparent floating window |
-| 🔔 **Desktop Notifications** | Native macOS notifications on timer events |
-| 🔊 **Sound Effects** | Subtle sounds for phase changes and completions |
-| 📈 **Session Statistics** | Track total sessions, focus time, streaks |
-
-## 🚀 Installation
-
-### One-liner (curl)
+## Quick Start
 
 ```bash
+# Install
 curl -sSL https://raw.githubusercontent.com/someshfengde/pomo_pet/main/install.sh | bash
+
+# Launch (default: avocado pet, 25min work / 5min break)
+pomo-pet start
+
+# Or pick a pet
+pomo-pet start avocado
 ```
 
-### Manual
+## Usage
 
 ```bash
-git clone https://github.com/someshfengde/pomo_pet.git
-cd pomo_pet
-make install
-```
-
-## 🎮 Usage
-
-```bash
-# List available pets
-pomo-pet --list-pets
-
-# Launch with defaults (25min work / 5min break)
-pomo-pet --pet avocado
+pomo-pet start              # Launch default pet (avocado)
+pomo-pet start avocado      # Launch specific pet
+pomo-pet list               # See available pets
+pomo-pet stats              # View session statistics
 
 # Custom durations
-pomo-pet --pet avocado --work 30 --break 10
+pomo-pet --work 30 --break 10 start
 
-# View session statistics
-pomo-pet --stats
-
-# Launch without sound
-pomo-pet --pet avocado --no-sound
+# Disable sounds
+pomo-pet --no-sound start
 ```
 
-## 🕹️ Controls
+## Controls
 
 | Action | How |
 |--------|-----|
-| **Move pet** | Click and drag |
-| **Pause / Resume** | Single click |
-| **Reset timer** | Double click |
-| **Quit** | `Q` or `ESC` |
+| Move pet | Click + drag |
+| Pause / Resume | Single click |
+| Reset timer | Double click |
+| Quit | `Q` or `ESC` |
 
-## 🎭 Animation States
+## What It Does
 
-Animations trigger automatically based on context:
+- Floating transparent window with animated pet sprite
+- Pomodoro timer with progress bar
+- Pet animations react to timer state (work, break, idle, dragging)
+- Sound effects on phase changes and session completions
+- macOS native notifications
+- Session statistics persisted across runs
 
-| State | Trigger | Row | Frames |
-|-------|---------|-----|--------|
-| `idle` | Break phase | 0 | 6 |
-| `run_right` | Drag right | 1 | 8 |
-| `run_left` | Drag left | 2 | 8 |
-| `waving` | Session complete | 3 | 4 |
-| `jumping` | Phase transition | 4 | 5 |
-| `failed` | Timer hits 00:00 | 5 | 8 |
-| `waiting` | 30s idle | 6 | 6 |
-| `running` | Work phase | 7 | 6 |
-| `review` | Work phase (alters) | 8 | 6 |
+## Adding Pets
 
-## 📈 Statistics
-
-View your productivity stats:
-
-```bash
-pomo-pet --stats
-```
-
-```
-Total sessions:   42
-Total focus:      17.5h (1050min)
-Total break:      210min
-Current streak:   5
-Best streak:      12
-Today:            3 sessions
-```
-
-Stats are saved to `~/.pomo-pet/stats.json` and persist across sessions.
-
-## 🐉 Adding Pets
-
-### 1. Create directory
+Create a directory under `pets/` with:
 
 ```
 pets/mypet/
@@ -145,8 +62,7 @@ pets/mypet/
 └── spritesheet.webp
 ```
 
-### 2. Write `pet.json`
-
+**pet.json:**
 ```json
 {
   "id": "mypet",
@@ -170,82 +86,36 @@ pets/mypet/
 }
 ```
 
-### 3. Spritesheet format
+Browse [Petdex](https://petdex.dev/) for spritesheet-compatible pets.
 
-- **Format:** WebP with transparency
-- **Frame size:** 192×192 px (recommended)
-- **Layout:** One animation per row
-- **Tools:** [Aseprite](https://www.aseprite.org/), [Petdex](https://petdex.dev/)
-
-## 🛠️ Development
-
-### Commands
+## Development
 
 ```bash
 make install    # Install dependencies
-make test       # Run tests
-make test-all   # Run tests with coverage
-make run        # Launch with avocado pet
+make test       # Run tests (120 passing)
+make test-all   # Run with coverage
+make run        # Launch with avocado
 ```
 
-### Project Structure
-
+**Project structure:**
 ```
-pomo_pet/
-├── src/
-│   ├── __init__.py         # Public API re-exports
-│   ├── __main__.py         # python -m src
-│   ├── cli.py              # Click CLI + wiring
-│   ├── core/
-│   │   ├── timer.py        # PomodoroTimer, pause/reset
-│   │   ├── messages.py     # Phase-aware messages
-│   │   └── stats.py        # Session statistics
-│   ├── pets/
-│   │   ├── models.py       # Pet, AnimationDef
-│   │   ├── loader.py       # load_pet(), list_pets()
-│   │   └── renderer.py     # Pillow spritesheet utils
-│   └── ui/
-│       ├── theme.py        # Colors, fonts, config
-│       ├── window.py       # PySide6 window + animations
-│       ├── sounds.py       # Sound effects (macOS afplay)
-│       └── notifications.py # Desktop notifications
-├── assets/
-│   └── sounds/             # Generated WAV sound files
-├── tests/                  # 109 tests
+src/
+├── cli.py              # Click CLI with subcommands
+├── core/
+│   ├── timer.py        # PomodoroTimer (pause, reset)
+│   ├── messages.py     # Phase-aware messages
+│   └── stats.py        # Session statistics
 ├── pets/
-│   └── avacado/
-│       ├── pet.json
-│       └── spritesheet.webp
-├── pyproject.toml
-├── Makefile
-├── install.sh
-├── CHANGELOG.md
-└── README.md
+│   ├── models.py       # Pet, AnimationDef
+│   ├── loader.py       # Load from pet.json
+│   └── renderer.py     # Pillow spritesheet utils
+└── ui/
+    ├── theme.py        # Design tokens
+    ├── window.py       # PySide6 window + animations
+    ├── sounds.py       # Sound effects
+    └── notifications.py # macOS notifications
 ```
 
-### Tech Stack
-
-| Layer | Technology |
-|-------|-----------|
-| CLI | [Click](https://click.palletsprojects.com/) |
-| Window | [PySide6](https://doc.qt.io/qtforpython-6/) (Qt) |
-| Sprites | [Pillow](https://python-pillow.org/) |
-| Sound | macOS `afplay` (no deps) |
-| Notifications | macOS `osascript` (no deps) |
-| Testing | [pytest](https://pytest.org/) |
-| Packaging | [uv](https://docs.astral.sh/uv/) |
-
-## 📝 License
+## License
 
 MIT
-
----
-
-<div align="center">
-
-**Made with 🥑 and ☕**
-
-*Inspired by [Petdex](https://petdex.dev/)*
-
-</div>
-]]>

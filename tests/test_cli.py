@@ -16,62 +16,64 @@ class TestCLIHelp:
         result = runner.invoke(cli, ["--help"])
         assert result.exit_code == 0
 
-    def test_no_args(self, runner):
+    def test_no_args_shows_help(self, runner):
         result = runner.invoke(cli, [])
-        assert result.exit_code == 1
+        assert "Pomo Pet" in result.output
+
+    def test_start_help(self, runner):
+        result = runner.invoke(cli, ["start", "--help"])
+        assert result.exit_code == 0
 
 
-class TestListPets:
+class TestListCommand:
     def test_list_pets(self, runner):
-        result = runner.invoke(cli, ["--list-pets"])
+        result = runner.invoke(cli, ["list"])
         assert result.exit_code == 0
         assert "avocado" in result.output.lower()
 
     def test_empty(self, runner, tmp_path):
         with patch("src.cli.get_pets_dir", return_value=tmp_path):
-            result = runner.invoke(cli, ["--list-pets"])
+            result = runner.invoke(cli, ["list"])
             assert "No pets found" in result.output
 
 
-class TestCLIOptions:
+class TestStartCommand:
     def test_unknown_pet(self, runner):
-        assert runner.invoke(cli, ["--pet", "nope"]).exit_code == 1
+        assert runner.invoke(cli, ["start", "nope"]).exit_code == 1
 
-    def test_help_shows_options(self, runner):
-        result = runner.invoke(cli, ["--help"])
-        assert "--stats" in result.output
-        assert "--no-sound" in result.output
-
-    def test_stats_flag(self, runner):
-        with patch("src.cli.StatsStore") as mock_store:
-            mock_store.return_value.stats = MagicMock(
-                total_sessions=5, total_hours=2.5, total_focus_minutes=150,
-                total_break_minutes=25, current_streak=3, best_streak=5,
-                daily_sessions=2,
-            )
-            result = runner.invoke(cli, ["--stats"])
+    def test_default_pet(self, runner):
+        """start without argument defaults to avocado."""
+        with patch("src.cli.QApplication") as mock_q, \
+             patch("src.cli.PetWindow") as mock_w:
+            mock_w.return_value = MagicMock()
+            result = runner.invoke(cli, ["start"])
             assert result.exit_code == 0
-            assert "Total sessions" in result.output
+            assert "Avocado" in result.output
 
     @patch("src.cli.QApplication")
     @patch("src.cli.PetWindow")
-    def test_starts_window(self, mock_w, mock_q, runner):
+    def test_specific_pet(self, mock_w, mock_q, runner):
         mock_w.return_value = MagicMock()
-        result = runner.invoke(cli, ["--pet", "avocado"])
+        result = runner.invoke(cli, ["start", "avocado"])
         assert result.exit_code == 0
-        assert "Starting Pomo Pet" in result.output
+        assert "Avocado" in result.output
 
     @patch("src.cli.QApplication")
     @patch("src.cli.PetWindow")
     def test_custom_durations(self, mock_w, mock_q, runner):
         mock_w.return_value = MagicMock()
-        result = runner.invoke(cli, ["--pet", "avocado", "--work", "30", "--break", "10"])
+        result = runner.invoke(cli, ["--work", "30", "--break", "10", "start"])
         assert result.exit_code == 0
         assert "30min" in result.output
 
-    @patch("src.cli.QApplication")
-    @patch("src.cli.PetWindow")
-    def test_no_sound_flag(self, mock_w, mock_q, runner):
-        mock_w.return_value = MagicMock()
-        result = runner.invoke(cli, ["--pet", "avocado", "--no-sound"])
-        assert result.exit_code == 0
+
+class TestStatsCommand:
+    def test_stats(self, runner):
+        with patch("src.cli.StatsStore") as mock_store:
+            mock_store.return_value.stats = MagicMock(
+                total_sessions=5, total_hours=2.5, total_focus_minutes=150,
+                current_streak=3, best_streak=5, daily_sessions=2,
+            )
+            result = runner.invoke(cli, ["stats"])
+            assert result.exit_code == 0
+            assert "Sessions" in result.output

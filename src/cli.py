@@ -21,58 +21,20 @@ def get_pets_dir() -> Path:
     return Path(__file__).parent.parent / "pets"
 
 
-@click.command()
-@click.option("--pet", "pet_name", default=None, help="Pet to display (e.g., avocado)")
-@click.option("--work", "work_minutes", default=25, type=int, help="Work duration in minutes")
-@click.option("--break", "break_minutes", default=5, type=int, help="Break duration in minutes")
-@click.option("--list-pets", "list_pets_flag", is_flag=True, help="List available pets")
-@click.option("--stats", "stats_flag", is_flag=True, help="Show session statistics")
-@click.option("--no-sound", is_flag=True, help="Disable sound effects")
-def cli(pet_name, work_minutes, break_minutes, list_pets_flag, stats_flag, no_sound):
-    """Pomo Pet - A Pomodoro timer with animated pets!"""
-
-    if stats_flag:
-        store = StatsStore()
-        s = store.stats
-        click.echo(f"Total sessions:   {s.total_sessions}")
-        click.echo(f"Total focus:      {s.total_hours}h ({s.total_focus_minutes}min)")
-        click.echo(f"Current streak:   {s.current_streak}")
-        click.echo(f"Best streak:      {s.best_streak}")
-        click.echo(f"Today:            {s.daily_sessions} sessions")
-        return
-
-    if list_pets_flag:
-        pets = list_pets(get_pets_dir())
-        if not pets:
-            click.echo("No pets found.")
-            return
-        click.echo("Available pets:")
-        for p in pets:
-            click.echo(f"  {p.id:12s} - {p.display_name}: {p.description}")
-        return
-
-    if pet_name is None:
-        click.echo("Usage: pomo-pet --pet <name>")
-        click.echo("       pomo-pet --list-pets")
-        sys.exit(1)
-
-    # Load pet
+def _start_pet(pet_name: str, work_minutes: int, break_minutes: int, no_sound: bool) -> None:
+    """Launch a pet with timer."""
     pets = list_pets(get_pets_dir())
     pet = next((p for p in pets if p.id == pet_name), None)
     if pet is None:
-        click.echo(f"Pet '{pet_name}' not found. Use --list-pets.", err=True)
+        click.echo(f"Pet '{pet_name}' not found. Run 'pomo-pet list' to see available pets.", err=True)
         sys.exit(1)
 
-    # Stats
     store = StatsStore()
-
-    click.echo(f"Starting Pomo Pet with {pet.display_name}!")
-    click.echo(f"Work: {work_minutes}min | Break: {break_minutes}min")
+    click.echo(f"Starting {pet.display_name} | Work: {work_minutes}min | Break: {break_minutes}min")
     if store.stats.total_sessions > 0:
         click.echo(f"Stats: {store.summary}")
-    click.echo("Press Q or ESC to quit. Drag the pet to move it.")
+    click.echo("Drag to move · Click to pause · Double-click to reset · Q to quit")
 
-    # Timer
     timer = PomodoroTimer(work_minutes=work_minutes, break_minutes=break_minutes)
     current_message = get_message(timer.phase)
     last_phase = timer.phase
@@ -81,7 +43,6 @@ def cli(pet_name, work_minutes, break_minutes, list_pets_flag, stats_flag, no_so
 
     def timer_getter():
         nonlocal current_message, last_phase, last_sessions, last_tick
-
         now = time.time()
         elapsed = now - last_tick
         if elapsed >= 1.0 and not timer.paused:
@@ -89,7 +50,6 @@ def cli(pet_name, work_minutes, break_minutes, list_pets_flag, stats_flag, no_so
             last_tick += ticks
             for _ in range(ticks):
                 timer.tick()
-
             if timer.phase != last_phase:
                 current_message = get_message(timer.phase)
                 if not no_sound:
@@ -97,14 +57,12 @@ def cli(pet_name, work_minutes, break_minutes, list_pets_flag, stats_flag, no_so
                 if timer.phase == TimerPhase.WORK:
                     notify_break_over()
                 last_phase = timer.phase
-
             if timer.sessions_completed > last_sessions:
                 store.record_session(work_minutes, break_minutes)
                 if not no_sound:
                     play_session_complete()
                 notify_session_complete(timer.sessions_completed)
                 last_sessions = timer.sessions_completed
-
         total = timer.work_duration if timer.phase == TimerPhase.WORK else timer.break_duration
         return (
             timer.format_remaining(),
@@ -128,8 +86,62 @@ def cli(pet_name, work_minutes, break_minutes, list_pets_flag, stats_flag, no_so
         if not no_sound:
             play_click()
 
-    # Launch window
     app = QApplication(sys.argv)
     window = PetWindow(pet=pet)
     window.run(timer_getter=timer_getter, on_toggle_pause=on_toggle_pause, on_reset=on_reset)
     app.exec()
+
+
+@click.group(invoke_without_command=True)
+@click.pass_context
+@click.option("--work", "work_minutes", default=25, type=int, help="Work duration (min)")
+@click.option("--break", "break_minutes", default=5, type=int, help="Break duration (min)")
+@click.option("--no-sound", is_flag=True, help="Disable sounds")
+def cli(ctx, work_minutes, break_minutes, no_sound):
+    """Pomo Pet - Pomodoro timer with animated pets."""
+    ctx.ensure_object(dict)
+    ctx.obj["work"] = work_minutes
+    ctx.obj["break"] = break_minutes
+    ctx.obj["no_sound"] = no_sound
+
+    if ctx.invoked_subcommand is None:
+        # No subcommand → show help
+        click.echo(ctx.get_help())
+
+
+@cli.command()
+@click.argument("pet_name", default="avocado")
+@click.pass_context
+def start(ctx, pet_name):
+    """Start a pet. Default: avocado.
+
+    \b
+    Examples:
+      pomo-pet start              # Launch avocado
+      pomo-pet start avocado      # Launch avocado
+      pomo-pet start --work 30    # 30min work sessions
+    """
+    _start_pet(pet_name, ctx.obj["work"], ctx.obj["break"], ctx.obj["no_sound"])
+
+
+@cli.command("list")
+def list_cmd():
+    """List available pets."""
+    pets = list_pets(get_pets_dir())
+    if not pets:
+        click.echo("No pets found.")
+        return
+    click.echo("Available pets:")
+    for p in pets:
+        click.echo(f"  {p.id:12s} - {p.display_name}: {p.description}")
+
+
+@cli.command()
+def stats():
+    """Show session statistics."""
+    store = StatsStore()
+    s = store.stats
+    click.echo(f"Sessions:      {s.total_sessions}")
+    click.echo(f"Focus time:    {s.total_hours}h ({s.total_focus_minutes}min)")
+    click.echo(f"Streak:        {s.current_streak} (best: {s.best_streak})")
+    click.echo(f"Today:         {s.daily_sessions} sessions")
