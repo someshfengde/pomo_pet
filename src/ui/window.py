@@ -104,21 +104,23 @@ class PetWindow(QMainWindow):
         self._setup_timer()
 
     @staticmethod
-    def _calc_scale(sprite_w: int, sprite_h: int) -> int:
-        """Calculate optimal scale factor for display.
+    def _calc_display_size(sprite_w: int, sprite_h: int) -> tuple[int, int]:
+        """Calculate display size for the sprite.
 
-        Target: ~150-200px on the larger dimension.
-        - 64px sprite  → 2x = 128px
-        - 96px sprite  → 2x = 192px
-        - 128px sprite → 1x = 128px
-        - 192px sprite → 1x = 192px
-        - 256px sprite → 1x = 256px
+        Target: ~120px on the larger dimension.
         """
+        target = 120
         max_dim = max(sprite_w, sprite_h)
-        if max_dim <= 100:
-            return 2
+        if max_dim <= target:
+            # Small sprites: scale up to target
+            scale = target / max_dim
         else:
-            return 1
+            # Large sprites: scale down to target
+            scale = target / max_dim
+
+        display_w = int(sprite_w * scale)
+        display_h = int(sprite_h * scale)
+        return display_w, display_h
 
     def _setup_window(self) -> None:
         self.setWindowFlags(
@@ -129,12 +131,12 @@ class PetWindow(QMainWindow):
         self.setAttribute(Qt.WA_TranslucentBackground)
         self.setAttribute(Qt.WA_NoSystemBackground)
 
-        # Intelligent sizing: scale sprite to a good display size
+        # Intelligent sizing based on sprite dimensions
         sprite_w = self.pet.frame_width
         sprite_h = self.pet.frame_height
-        scale = self._calc_scale(sprite_w, sprite_h)
-        self._sprite_scale = scale
-        self.setFixedSize(sprite_w * scale, sprite_h * scale)
+        display_w, display_h = self._calc_display_size(sprite_w, sprite_h)
+        self._sprite_scale = display_w / sprite_w  # fractional scale
+        self.setFixedSize(display_w, display_h)
         self.move(100, 100)
 
     def showEvent(self, event) -> None:
@@ -182,8 +184,8 @@ class PetWindow(QMainWindow):
             return
 
         # Load each animation and scale to display size
-        display_w = self.pet.frame_width * self._sprite_scale
-        display_h = self.pet.frame_height * self._sprite_scale
+        display_w = self.width()
+        display_h = self.height()
         for name, ad in self._anim_defs.items():
             frames = []
             for col in range(ad.frames):

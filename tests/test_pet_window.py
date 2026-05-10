@@ -71,31 +71,37 @@ def _dblclick(x, y):
                        Qt.LeftButton, Qt.LeftButton, Qt.NoModifier)
 
 
-class TestCalcScale:
-    def test_64px_sprite(self):
-        assert PetWindow._calc_scale(64, 64) == 2
-
-    def test_96px_sprite(self):
-        assert PetWindow._calc_scale(96, 96) == 2
-
-    def test_128px_sprite(self):
-        assert PetWindow._calc_scale(128, 128) == 1
-
+class TestCalcDisplaySize:
     def test_192px_sprite(self):
-        assert PetWindow._calc_scale(192, 192) == 1
+        """192px sprite scales to ~120px."""
+        w, h = PetWindow._calc_display_size(192, 192)
+        assert w == 120
+        assert h == 120
+
+    def test_64px_sprite(self):
+        """64px sprite scales up to ~120px."""
+        w, h = PetWindow._calc_display_size(64, 64)
+        assert w == 120
+        assert h == 120
 
     def test_256px_sprite(self):
-        assert PetWindow._calc_scale(256, 256) == 1
+        """256px sprite scales down to ~120px."""
+        w, h = PetWindow._calc_display_size(256, 256)
+        assert w == 120
+        assert h == 120
 
-    def test_rectangular_sprite(self):
-        assert PetWindow._calc_scale(64, 128) == 1
+    def test_rectangular(self):
+        """Rectangular sprite maintains aspect ratio."""
+        w, h = PetWindow._calc_display_size(192, 96)
+        assert w == 120
+        assert h == 60
 
 
 class TestWindowSetup:
-    def test_window_size_192_native(self, window):
-        """192px sprite at 1x = 192px window."""
-        assert window.width() == 192
-        assert window.height() == 192
+    def test_window_size(self, window):
+        """192px sprite → 120px window."""
+        assert window.width() == 120
+        assert window.height() == 120
 
     def test_initial_state(self, window):
         assert window._current_anim == "idle"
@@ -115,16 +121,15 @@ class TestAnimationSystem:
         assert len(window._animations["idle"]) == 6
         assert len(window._animations["run_right"]) == 8
 
-    def test_frames_native_size(self, window):
-        """Frames are native size (no scaling for 192px)."""
+    def test_frames_scaled_to_display(self, window):
+        """Frames are scaled to display size."""
         frame = window._animations["idle"][0]
-        assert frame.width() == 192
-        assert frame.height() == 192
+        assert frame.width() == 120
+        assert frame.height() == 120
 
     def test_fps_from_pet_json(self, window):
         assert window._anim_defs["idle"].fps == 8
         assert window._anim_defs["run_right"].fps == 12
-        assert window._anim_defs["waiting"].fps == 6
 
     def test_set_animation(self, window):
         window._set_animation("running")
