@@ -9,7 +9,11 @@
 ## Quick Start
 
 ```bash
-# Install
+# Install with Homebrew (recommended)
+brew tap someshfengde/pomo-pet
+brew install pomo-pet
+
+# Or install with curl
 curl -sSL https://raw.githubusercontent.com/someshfengde/pomo_pet/main/install.sh | bash
 
 # Launch (default: avocado pet, 25min work / 5min break)

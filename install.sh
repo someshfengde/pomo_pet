@@ -4,6 +4,20 @@ set -e
 echo "🐾 Installing Pomo Pet..."
 echo ""
 
+# Check if Homebrew is available — prefer brew install
+if command -v brew &> /dev/null; then
+    echo "Homebrew detected! Installing via brew..."
+    brew tap someshfengde/pomo-pet
+    brew install pomo-pet
+    echo ""
+    echo "✅ Pomo Pet installed via Homebrew!"
+    echo "   Run: pomo-pet start"
+    exit 0
+fi
+
+echo "Homebrew not found. Installing manually..."
+echo ""
+
 # Check for uv
 if ! command -v uv &> /dev/null; then
     echo "Installing uv (Python package manager)..."
