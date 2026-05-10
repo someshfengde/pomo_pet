@@ -349,13 +349,6 @@ class PetWindow(QMainWindow):
             p.fillRect(QRect(0, 0, W, H), QColor(0, 0, 0, 0))
             p.setCompositionMode(QPainter.CompositionMode_SourceOver)
 
-            # --- Background panel (dark, semi-transparent, rounded) ---
-            panel_margin = 4
-            panel_rect = QRect(panel_margin, panel_margin, W - 2 * panel_margin, H - 2 * panel_margin)
-            p.setPen(Qt.NoPen)
-            p.setBrush(QBrush(QColor(24, 24, 28, 180)))
-            p.drawRoundedRect(panel_rect, 16, 16)
-
             is_work = self.timer_phase == "WORK"
             timer_color = QColor(52, 199, 89) if is_work else QColor(90, 200, 245)
             dim_color = QColor(140, 140, 148)
