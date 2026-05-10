@@ -103,6 +103,29 @@ class PetWindow(QMainWindow):
         self._load_animations()
         self._setup_timer()
 
+    @staticmethod
+    def _calc_scale(sprite_w: int, sprite_h: int) -> int:
+        """Calculate optimal scale factor for display.
+
+        Target: ~250-350px on the larger dimension.
+        - 64px sprite  → 4x = 256px
+        - 96px sprite  → 3x = 288px
+        - 128px sprite → 2x = 256px
+        - 192px sprite → 2x = 384px
+        - 256px sprite → 1x = 256px
+        """
+        max_dim = max(sprite_w, sprite_h)
+        if max_dim <= 70:
+            return 4
+        elif max_dim <= 100:
+            return 3
+        elif max_dim <= 150:
+            return 2
+        elif max_dim <= 200:
+            return 2
+        else:
+            return 1
+
     def _setup_window(self) -> None:
         self.setWindowFlags(
             Qt.FramelessWindowHint
@@ -111,11 +134,13 @@ class PetWindow(QMainWindow):
         )
         self.setAttribute(Qt.WA_TranslucentBackground)
         self.setAttribute(Qt.WA_NoSystemBackground)
-        # Size window to sprite dimensions from pet.json
+
+        # Intelligent sizing: scale sprite to a good display size
         sprite_w = self.pet.frame_width
         sprite_h = self.pet.frame_height
-        self._sprite_scale = 1
-        self.setFixedSize(sprite_w, sprite_h)
+        scale = self._calc_scale(sprite_w, sprite_h)
+        self._sprite_scale = scale
+        self.setFixedSize(sprite_w * scale, sprite_h * scale)
         self.move(100, 100)
 
     def showEvent(self, event) -> None:

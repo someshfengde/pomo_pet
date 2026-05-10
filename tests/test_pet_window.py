@@ -71,17 +71,38 @@ def _dblclick(x, y):
                        Qt.LeftButton, Qt.LeftButton, Qt.NoModifier)
 
 
+class TestCalcScale:
+    def test_64px_sprite(self):
+        assert PetWindow._calc_scale(64, 64) == 4
+
+    def test_96px_sprite(self):
+        assert PetWindow._calc_scale(96, 96) == 3
+
+    def test_128px_sprite(self):
+        assert PetWindow._calc_scale(128, 128) == 2
+
+    def test_192px_sprite(self):
+        assert PetWindow._calc_scale(192, 192) == 2
+
+    def test_256px_sprite(self):
+        assert PetWindow._calc_scale(256, 256) == 1
+
+    def test_rectangular_sprite(self):
+        # Uses max dimension
+        assert PetWindow._calc_scale(64, 128) == 2
+
+
 class TestWindowSetup:
-    def test_window_size_matches_sprite(self, window):
-        """Window uses frameWidth/frameHeight from pet.json."""
-        assert window.width() == 192
-        assert window.height() == 192
+    def test_window_size_192_scaled(self, window):
+        """192px sprite at 2x = 384px window."""
+        assert window.width() == 384
+        assert window.height() == 384
 
     def test_initial_state(self, window):
         assert window._current_anim == "idle"
         assert window._pending_anim is None
 
-    def test_translucent_background(self, window):
+    def test_translucent(self, window):
         assert window.testAttribute(Qt.WA_TranslucentBackground)
 
 
@@ -93,16 +114,15 @@ class TestAnimationSystem:
 
     def test_frame_count(self, window):
         assert len(window._animations["idle"]) == 6
-        assert len(run_right := window._animations["run_right"]) == 8
+        assert len(window._animations["run_right"]) == 8
 
-    def test_frames_are_native_size(self, window):
-        """Frames are native size from pet.json (no scaling)."""
+    def test_frames_scaled(self, window):
+        """Frames are scaled to display size."""
         frame = window._animations["idle"][0]
-        assert frame.width() == 192
-        assert frame.height() == 192
+        assert frame.width() == 384  # 192 * 2
+        assert frame.height() == 384
 
     def test_fps_from_pet_json(self, window):
-        """Animation fps comes from pet.json."""
         assert window._anim_defs["idle"].fps == 8
         assert window._anim_defs["run_right"].fps == 12
         assert window._anim_defs["waiting"].fps == 6
@@ -125,17 +145,15 @@ class TestAnimationSystem:
         assert window._pick_animation("BREAK") == "idle"
 
     def test_animate_uses_pet_json_fps(self, window):
-        """Frame advances at the rate specified in pet.json."""
-        window._current_anim = "idle"  # 8fps
+        window._current_anim = "idle"
         window._frame_index = 0
         window._frame_timer = 0.0
-        # At 8fps, interval is 0.125s
         window._animate(0.13)
         assert window._frame_index == 1
 
     def test_animate_loops(self, window):
         window._current_anim = "idle"
-        window._frame_index = 5  # last frame (6 frames)
+        window._frame_index = 5
         window._frame_timer = 0.0
         window._animate(0.13)
         assert window._frame_index == 0
@@ -143,7 +161,7 @@ class TestAnimationSystem:
     def test_animate_oneshot_returns(self, window):
         window._current_anim = "waving"
         window._pending_anim = "running"
-        window._frame_index = 3  # last frame (4 frames)
+        window._frame_index = 3
         window._frame_timer = 0.0
         window._animate(0.13)
         assert window._current_anim == "running"

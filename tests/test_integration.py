@@ -22,6 +22,14 @@ class TestFullWorkflow:
         assert result.exit_code == 0
         assert "avocado" in result.output.lower()
 
+    @patch("src.cli.QApplication")
+    @patch("src.cli.PetWindow")
+    def test_start_pet(self, mock_w, mock_q, runner):
+        mock_w.return_value = MagicMock()
+        result = runner.invoke(cli, ["--pet", "avocado"])
+        assert result.exit_code == 0
+        assert "Avocado" in result.output
+
     def test_invalid_pet(self, runner):
         assert runner.invoke(cli, ["--pet", "dragon"]).exit_code == 1
 
