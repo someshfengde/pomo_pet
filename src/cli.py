@@ -24,6 +24,19 @@ def get_pets_dir() -> Path:
     return Path(__file__).parent.parent / "pets"
 
 
+def _set_macos_process_name(name: str) -> None:
+    """Set the macOS process name so the dock shows our name, not 'python3.13'."""
+    try:
+        import AppKit
+        AppKit.NSProcessInfo.processInfo().setProcessName_(name)
+        # Also set the activation policy so it appears as a regular app
+        AppKit.NSApplication.sharedApplication().setActivationPolicy_(
+            AppKit.NSApplicationActivationPolicyRegular
+        )
+    except Exception:
+        pass  # non-macOS or pyobjc not available
+
+
 def _start_pet(pet_name: str, work_minutes: int, break_minutes: int, no_sound: bool) -> None:
     """Launch a pet with timer."""
     pets = list_pets(get_pets_dir())
@@ -62,6 +75,7 @@ def _start_pet(pet_name: str, work_minutes: int, break_minutes: int, no_sound: b
 
     # ── Foreground child process: safe to import Qt now ──
     from PySide6.QtWidgets import QApplication
+    from PySide6.QtGui import QIcon, QPixmap
     from src.ui.window import PetWindow
 
     store = StatsStore()
@@ -122,6 +136,20 @@ def _start_pet(pet_name: str, work_minutes: int, break_minutes: int, no_sound: b
             play_click()
 
     app = QApplication(sys.argv)
+    app.setApplicationName("Pomo Pet")
+    app.setApplicationDisplayName("Pomo Pet")
+
+    # Set app icon from the pet's first idle frame
+    icon_path = Path(pet.spritesheet_path)
+    if icon_path.exists():
+        sheet = QPixmap(str(icon_path))
+        if not sheet.isNull():
+            icon_frame = sheet.copy(0, 0, pet.frame_width, pet.frame_height)
+            app.setWindowIcon(QIcon(icon_frame))
+
+    # macOS: rename process so dock shows "Pomo Pet" instead of "python3.13"
+    _set_macos_process_name("Pomo Pet")
+
     window = PetWindow(pet=pet)
     window.run(timer_getter=timer_getter, on_toggle_pause=on_toggle_pause, on_reset=on_reset)
     app.exec()
