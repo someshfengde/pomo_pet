@@ -63,6 +63,8 @@ class TestPetLoaderIntegration:
             pytest.skip("avacado not found")
         pet = load_pet(pets_dir)
         assert pet.id == "avocado"
+        assert pet.frame_width == 192
+        assert pet.frame_height == 208
         assert "idle" in pet.animations
 
     def test_list_real_pets(self):
