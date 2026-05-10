@@ -46,14 +46,14 @@ A prioritized list of improvements to make Pomo Pet a truly delightful, Apple-qu
 - **Tech:** List of `PetWindow` instances, shared timer state
 
 ### 9. Sound volume control
-- `--volume 0-100` flag
-- Remember preference in config file
-- **Tech:** Scale WAV amplitude before playing
+- **DONE** — `--volume 0-100` flag
+- Saves to config: `pomo-pet config volume 50`
+- Uses `afplay -v <vol/100>` for volume-scaled playback
 
 ### 10. Custom message support
-- `--messages-file path/to/messages.txt` for custom motivational messages
+- **DONE** — `--messages-file path/to/messages.txt`
 - One message per line, random selection
-- **Tech:** Extend `MessageProvider` to load from file
+- Saves to config: `pomo-pet config messages_file ~/msgs.txt`
 
 ---
 
