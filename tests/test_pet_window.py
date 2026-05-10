@@ -73,30 +73,29 @@ def _dblclick(x, y):
 
 class TestCalcScale:
     def test_64px_sprite(self):
-        assert PetWindow._calc_scale(64, 64) == 4
+        assert PetWindow._calc_scale(64, 64) == 2
 
     def test_96px_sprite(self):
-        assert PetWindow._calc_scale(96, 96) == 3
+        assert PetWindow._calc_scale(96, 96) == 2
 
     def test_128px_sprite(self):
-        assert PetWindow._calc_scale(128, 128) == 2
+        assert PetWindow._calc_scale(128, 128) == 1
 
     def test_192px_sprite(self):
-        assert PetWindow._calc_scale(192, 192) == 2
+        assert PetWindow._calc_scale(192, 192) == 1
 
     def test_256px_sprite(self):
         assert PetWindow._calc_scale(256, 256) == 1
 
     def test_rectangular_sprite(self):
-        # Uses max dimension
-        assert PetWindow._calc_scale(64, 128) == 2
+        assert PetWindow._calc_scale(64, 128) == 1
 
 
 class TestWindowSetup:
-    def test_window_size_192_scaled(self, window):
-        """192px sprite at 2x = 384px window."""
-        assert window.width() == 384
-        assert window.height() == 384
+    def test_window_size_192_native(self, window):
+        """192px sprite at 1x = 192px window."""
+        assert window.width() == 192
+        assert window.height() == 192
 
     def test_initial_state(self, window):
         assert window._current_anim == "idle"
@@ -116,11 +115,11 @@ class TestAnimationSystem:
         assert len(window._animations["idle"]) == 6
         assert len(window._animations["run_right"]) == 8
 
-    def test_frames_scaled(self, window):
-        """Frames are scaled to display size."""
+    def test_frames_native_size(self, window):
+        """Frames are native size (no scaling for 192px)."""
         frame = window._animations["idle"][0]
-        assert frame.width() == 384  # 192 * 2
-        assert frame.height() == 384
+        assert frame.width() == 192
+        assert frame.height() == 192
 
     def test_fps_from_pet_json(self, window):
         assert window._anim_defs["idle"].fps == 8

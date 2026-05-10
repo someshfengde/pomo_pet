@@ -107,21 +107,15 @@ class PetWindow(QMainWindow):
     def _calc_scale(sprite_w: int, sprite_h: int) -> int:
         """Calculate optimal scale factor for display.
 
-        Target: ~250-350px on the larger dimension.
-        - 64px sprite  → 4x = 256px
-        - 96px sprite  → 3x = 288px
-        - 128px sprite → 2x = 256px
-        - 192px sprite → 2x = 384px
+        Target: ~150-200px on the larger dimension.
+        - 64px sprite  → 2x = 128px
+        - 96px sprite  → 2x = 192px
+        - 128px sprite → 1x = 128px
+        - 192px sprite → 1x = 192px
         - 256px sprite → 1x = 256px
         """
         max_dim = max(sprite_w, sprite_h)
-        if max_dim <= 70:
-            return 4
-        elif max_dim <= 100:
-            return 3
-        elif max_dim <= 150:
-            return 2
-        elif max_dim <= 200:
+        if max_dim <= 100:
             return 2
         else:
             return 1
