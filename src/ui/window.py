@@ -111,9 +111,11 @@ class PetWindow(QMainWindow):
         )
         self.setAttribute(Qt.WA_TranslucentBackground)
         self.setAttribute(Qt.WA_NoSystemBackground)
-        # Size to fit the pet sprite
-        sprite_w = self.pet.frame_width
-        sprite_h = self.pet.frame_height
+        # Size to 2x the sprite for visibility
+        scale = 2
+        sprite_w = self.pet.frame_width * scale
+        sprite_h = self.pet.frame_height * scale
+        self._sprite_scale = scale
         self.setFixedSize(sprite_w, sprite_h)
         self.move(100, 100)
 
@@ -161,11 +163,14 @@ class PetWindow(QMainWindow):
             self._anim_defs["idle"] = AnimationDef(row=0, frames=len(frames), fps=8, loop=True)
             return
 
-        # Load each animation at native sprite size (no scaling)
+        # Load each animation and scale to display size
+        display_w = self.pet.frame_width * self._sprite_scale
+        display_h = self.pet.frame_height * self._sprite_scale
         for name, ad in self._anim_defs.items():
             frames = []
             for col in range(ad.frames):
                 f = sheet.copy(col * fw, ad.row * fh, fw, fh)
+                f = f.scaled(display_w, display_h, Qt.KeepAspectRatio, Qt.SmoothTransformation)
                 frames.append(f)
             self._animations[name] = frames
 

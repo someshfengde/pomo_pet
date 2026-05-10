@@ -73,9 +73,9 @@ def _dblclick(x, y):
 
 class TestWindowSetup:
     def test_window_size_matches_sprite(self, window):
-        """Window is sized to the sprite dimensions."""
-        assert window.width() == 192
-        assert window.height() == 192
+        """Window is 2x the sprite dimensions."""
+        assert window.width() == 384  # 192 * 2
+        assert window.height() == 384
 
     def test_initial_state(self, window):
         assert window._current_anim == "idle"
@@ -95,11 +95,11 @@ class TestAnimationSystem:
         assert len(window._animations["idle"]) == 6
         assert len(run_right := window._animations["run_right"]) == 8
 
-    def test_frames_are_native_size(self, window):
-        """Frames are not scaled — native 192x192."""
+    def test_frames_are_scaled(self, window):
+        """Frames are scaled to 2x display size."""
         frame = window._animations["idle"][0]
-        assert frame.width() == 192
-        assert frame.height() == 192
+        assert frame.width() == 384  # 192 * 2
+        assert frame.height() == 384
 
     def test_fps_from_pet_json(self, window):
         """Animation fps comes from pet.json."""
