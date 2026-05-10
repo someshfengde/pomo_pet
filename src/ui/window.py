@@ -73,13 +73,16 @@ class PetWindow(QMainWindow):
 
     @staticmethod
     def _calc_display_size(sprite_w: int, sprite_h: int) -> tuple[int, int]:
-        """Calculate display size: 160px wide, sprite + UI area tall."""
-        target_w = 160
-        scale = target_w / max(sprite_w, sprite_h)
-        display_w = int(sprite_w * scale)
-        display_h = int(sprite_h * scale)
-        total_h = display_h + 90
-        return display_w, total_h
+        """Calculate display size: 220px wide, sprite at native size + UI area."""
+        window_w = 220
+        # Scale sprite to fit within (window_w - 2*margin) with some padding
+        max_sprite_w = window_w - 28  # 14px margin each side
+        scale = min(max_sprite_w / sprite_w, 1.0)  # never upscale beyond native
+        display_sprite_h = int(sprite_h * scale)
+        # UI area below sprite: name(16) + timer(30) + progress(8) + label(14) + msg(14) + gaps(40)
+        ui_area = 122
+        total_h = display_sprite_h + ui_area
+        return window_w, total_h
 
     def _setup_window(self) -> None:
         self.setWindowFlags(
@@ -93,7 +96,9 @@ class PetWindow(QMainWindow):
         sprite_w = self.pet.frame_width
         sprite_h = self.pet.frame_height
         display_w, display_h = self._calc_display_size(sprite_w, sprite_h)
-        self._sprite_scale = display_w / sprite_w
+        self._sprite_scale = min((display_w - 28) / sprite_w, 1.0)
+        self._sprite_display_w = int(sprite_w * self._sprite_scale)
+        self._sprite_display_h = int(sprite_h * self._sprite_scale)
         self.setFixedSize(display_w, display_h)
         self.move(100, 100)
 
@@ -130,8 +135,8 @@ class PetWindow(QMainWindow):
             self._anim_defs["idle"] = AnimationDef(row=0, frames=len(frames), fps=8, loop=True)
             return
 
-        display_w = self.width()
-        display_h = self.height() - 90
+        display_w = self._sprite_display_w
+        display_h = self._sprite_display_h
         for name, ad in self._anim_defs.items():
             frames = []
             for col in range(ad.frames):
@@ -344,19 +349,26 @@ class PetWindow(QMainWindow):
             p.fillRect(QRect(0, 0, W, H), QColor(0, 0, 0, 0))
             p.setCompositionMode(QPainter.CompositionMode_SourceOver)
 
+            # --- Background panel (dark, semi-transparent, rounded) ---
+            panel_margin = 4
+            panel_rect = QRect(panel_margin, panel_margin, W - 2 * panel_margin, H - 2 * panel_margin)
+            p.setPen(Qt.NoPen)
+            p.setBrush(QBrush(QColor(24, 24, 28, 180)))
+            p.drawRoundedRect(panel_rect, 16, 16)
+
             is_work = self.timer_phase == "WORK"
             timer_color = QColor(52, 199, 89) if is_work else QColor(90, 200, 245)
             dim_color = QColor(140, 140, 148)
-            y = 0
+            y = 14  # top margin
 
             # --- Pet name (from pet.json displayName) ---
-            name_font = QFont("Helvetica Neue", 10)
+            name_font = QFont("Helvetica Neue", 11)
             name_font.setBold(True)
             p.setFont(name_font)
-            p.setPen(QPen(QColor(200, 200, 200)))
-            name_rect = QRect(0, y, W, 14)
+            p.setPen(QPen(QColor(220, 220, 224)))
+            name_rect = QRect(0, y, W, 16)
             p.drawText(name_rect, Qt.AlignHCenter, self.pet.display_name)
-            y += 16
+            y += 22
 
             # --- Pet sprite ---
             frames = self._animations.get(self._current_anim, [])
@@ -366,32 +378,46 @@ class PetWindow(QMainWindow):
                 sprite_h = frame.height()
                 x = (W - frame.width()) // 2
                 p.drawPixmap(x, y, frame)
-            y += sprite_h + 4
+            y += sprite_h + 10
 
             # --- Timer text ---
-            timer_font = QFont("Helvetica Neue", 18)
+            timer_font = QFont("Helvetica Neue", 22)
             timer_font.setBold(True)
             p.setFont(timer_font)
             p.setPen(QPen(timer_color))
-            timer_rect = QRect(0, y, W, 22)
+            timer_rect = QRect(0, y, W, 28)
             p.drawText(timer_rect, Qt.AlignHCenter, self.timer_text)
-            y += 24
+            y += 32
 
             # --- Progress bar ---
-            bar_x = 10
-            bar_w = W - 20
-            bar_h = 3
+            bar_x = 20
+            bar_w = W - 40
+            bar_h = 4
             bar_r = bar_h // 2
 
             p.setPen(Qt.NoPen)
-            p.setBrush(QBrush(QColor(255, 255, 255, 15)))
+            p.setBrush(QBrush(QColor(255, 255, 255, 20)))
             p.drawRoundedRect(QRect(bar_x, y, bar_w, bar_h), bar_r, bar_r)
 
             fill_w = int(bar_w * self.timer_progress)
             if fill_w > 0:
                 p.setBrush(QBrush(timer_color))
                 p.drawRoundedRect(QRect(bar_x, y, fill_w, bar_h), bar_r, bar_r)
-            y += 10
+            y += 12
+
+            # --- Session dots ---
+            dot_y = y + 2
+            dot_size = 6
+            dot_spacing = 12
+            max_dots = 4
+            dots_x_start = (W - (max_dots * dot_size + (max_dots - 1) * (dot_spacing - dot_size))) // 2
+            for i in range(max_dots):
+                dx = dots_x_start + i * dot_spacing
+                color = QColor(255, 200, 50) if i < self.sessions else QColor(60, 60, 66)
+                p.setBrush(QBrush(color))
+                p.setPen(Qt.NoPen)
+                p.drawEllipse(dx, dot_y, dot_size, dot_size)
+            y += 14
 
             # --- Animation state label ---
             anim_label = self._current_anim.replace("_", " ").title()
@@ -406,11 +432,11 @@ class PetWindow(QMainWindow):
             p.setPen(QPen(QColor(100, 100, 108)))
             anim_rect = QRect(0, y, W, 12)
             p.drawText(anim_rect, Qt.AlignHCenter, anim_info)
-            y += 14
+            y += 16
 
             # --- Message ---
             if self.message:
-                display_msg = self.message[:24] + ("..." if len(self.message) > 24 else "")
+                display_msg = self.message[:28] + ("..." if len(self.message) > 28 else "")
                 msg_font = QFont("Helvetica Neue", 9)
                 p.setFont(msg_font)
                 p.setPen(QPen(dim_color))
