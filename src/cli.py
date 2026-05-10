@@ -290,3 +290,47 @@ def config_cmd(key, value):
 
     cfg.update(**{key: value})
     click.echo(f"Set {key} = {value}")
+
+
+@cli.command()
+def update():
+    """Update Pomo Pet to the latest version."""
+    import shutil
+
+    install_dir = Path.home() / ".pomo-pet"
+    if not (install_dir / ".git").exists():
+        click.echo("Not installed via install.sh. Run:")
+        click.echo("  curl -sSL https://raw.githubusercontent.com/someshfengde/pomo_pet/main/install.sh | bash")
+        sys.exit(1)
+
+    click.echo("Updating Pomo Pet...")
+
+    # git pull
+    result = subprocess.run(
+        ["git", "pull", "--ff-only"],
+        cwd=install_dir,
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        click.echo(f"Git pull failed: {result.stderr.strip()}", err=True)
+        sys.exit(1)
+    click.echo(result.stdout.strip())
+
+    # uv sync
+    uv = shutil.which("uv")
+    if not uv:
+        click.echo("uv not found. Install it: curl -LsSf https://astral.sh/uv/install.sh | sh")
+        sys.exit(1)
+
+    result = subprocess.run(
+        [uv, "sync"],
+        cwd=install_dir,
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        click.echo(f"uv sync failed: {result.stderr.strip()}", err=True)
+        sys.exit(1)
+
+    click.echo("Updated! Restart pomo-pet to use the new version.")
