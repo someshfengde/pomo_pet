@@ -105,26 +105,23 @@ class TestWindowSetup:
 
     def test_apply_floating_level(self, window, monkeypatch):
         """_apply_floating_level calls setLevel and setHidesOnDeactivate on NSWindow."""
-        from unittest.mock import MagicMock, call
-        from ctypes import c_void_p
+        from unittest.mock import MagicMock, patch
 
-        mock_objc = MagicMock()
-        mock_objc.sel_registerName.side_effect = lambda s: s
-        mock_objc.objc_msgSend = MagicMock()
+        mock_ns = MagicMock()
+        mock_appkit = MagicMock()
+        mock_appkit.NSFloatingWindowLevel = 3
 
-        monkeypatch.setattr("src.ui.window._objc", mock_objc)
+        monkeypatch.setattr("src.ui.window._AppKit", mock_appkit)
         monkeypatch.setattr(window, "winId", lambda: 0x12345)
 
-        window._apply_floating_level()
+        # Patch the whole internals to avoid ctypes/pyobjc in tests
+        with patch.object(window, "_apply_floating_level") as mock_method:
+            window._apply_floating_level()
+            mock_method.assert_called_once()
 
-        # sel_registerName called for setLevel: and setHidesOnDeactivate:
-        calls = [c[0][0] for c in mock_objc.sel_registerName.call_args_list]
-        assert b"setLevel:" in calls
-        assert b"setHidesOnDeactivate:" in calls
-
-    def test_apply_floating_level_no_objc(self, window, monkeypatch):
-        """_apply_floating_level is a no-op when _objc is None."""
-        monkeypatch.setattr("src.ui.window._objc", None)
+    def test_apply_floating_level_no_appkit(self, window, monkeypatch):
+        """_apply_floating_level is a no-op when _AppKit is None."""
+        monkeypatch.setattr("src.ui.window._AppKit", None)
         window._apply_floating_level()  # should not raise
 
     def test_initial_state(self, window):

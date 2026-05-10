@@ -11,13 +11,14 @@ from PySide6.QtGui import QPainter, QPixmap, QColor, QFont, QPen, QBrush, QShort
 from src.pets.models import AnimationDef
 from src.ui.theme import WindowConfig
 
-# macOS: ctypes bridge for AppKit calls (no pyobjc dependency needed)
-_objc = None
+# macOS: load AppKit for native window control (pyobjc handles ARM64 ABI correctly)
+_AppKit = None
 if sys.platform == "darwin":
     try:
-        _objc = getattr(__import__("ctypes"), "cdll").LoadLibrary("/usr/lib/libobjc.A.dylib")
+        import AppKit
+        _AppKit = AppKit
     except Exception:
-        _objc = None
+        pass
 
 
 # ---------------------------------------------------------------------------
@@ -100,52 +101,37 @@ class PetWindow(QMainWindow):
         self.move(100, 100)
 
     def _apply_floating_level(self) -> None:
-        """Apply NSFloatingWindowLevel to the real NSWindow via ctypes.
+        """Apply NSFloatingWindowLevel to the real NSWindow.
 
         Must be called AFTER show() so winId() returns a valid native handle.
-        Uses the ObjC runtime directly — no pyobjc dependency.
+        Uses pyobjc AppKit — handles ARM64 calling convention correctly.
         """
-        if _objc is None or sys.platform != "darwin":
+        if _AppKit is None or sys.platform != "darwin":
             return
 
-        from ctypes import c_void_p, CFUNCTYPE
-
         try:
-            # Get the native NSWindow from Qt's winId()
-            ns_window_ptr = int(self.winId())
-            if ns_window_ptr == 0:
+            ns_view_ptr = int(self.winId())
+            if ns_view_ptr == 0:
                 return
 
-            # ObjC runtime functions
-            sel_registerName = _objc.sel_registerName
-            sel_registerName.restype = c_void_p
-            sel_registerName.argtypes = [c_void_p]
-
-            # Typed objc_msgSend: id (*)(id, SEL, ...)
-            MsgSendType = CFUNCTYPE(c_void_p, c_void_p, c_void_p, c_void_p)
-            objc_msgSend = MsgSendType(_objc.objc_msgSend)
-
-            ns_window = c_void_p(ns_window_ptr)
-
-            # NSFloatingWindowLevel = 3
-            FLOATING_LEVEL = 3
-
-            # [ns_window setLevel: FLOATING_LEVEL]
-            objc_msgSend(
-                ns_window,
-                sel_registerName(b"setLevel:"),
-                c_void_p(FLOATING_LEVEL),
+            # Convert the raw pointer to an ObjC object
+            from ctypes import c_void_p, py_object, pythonapi
+            pythonapi.PyObjCObject_New.restype = py_object
+            pythonapi.PyObjCObject_New.argtypes = [c_void_p, c_void_p, c_void_p]
+            ns_view = pythonapi.PyObjCObject_New(
+                c_void_p(ns_view_ptr), 0, 0
             )
 
-            # [ns_window setHidesOnDeactivate: NO]
-            objc_msgSend(
-                ns_window,
-                sel_registerName(b"setHidesOnDeactivate:"),
-                c_void_p(0),  # NO
-            )
+            # winId() returns the NSView — get the NSWindow from it
+            ns_window = ns_view.window()
+            if ns_window is None:
+                return
+
+            ns_window.setLevel_(_AppKit.NSFloatingWindowLevel)
+            ns_window.setHidesOnDeactivate_(False)
 
         except Exception:
-            pass  # non-macOS or sandboxed — graceful fallback
+            pass  # graceful fallback
 
     def _setup_timer(self) -> None:
         t = QTimer(self)

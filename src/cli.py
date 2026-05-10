@@ -2,12 +2,15 @@
 
 import json
 import os
+import subprocess
 import sys
 import time
 from pathlib import Path
 
 import click
 from PySide6.QtWidgets import QApplication
+
+_FOREGROUND_ENV = "_POMO_PET_FOREGROUND"
 
 from src.pets.loader import list_pets
 from src.core.timer import PomodoroTimer, TimerPhase
@@ -88,24 +91,36 @@ def _start_pet(pet_name: str, work_minutes: int, break_minutes: int, no_sound: b
         if not no_sound:
             play_click()
 
-    # Fork to background so terminal is freed immediately
-    pid = os.fork()
-    if pid > 0:
-        # Parent: print info and exit
-        click.echo(f"{pet.display_name} running in background (PID {pid})")
-        click.echo("Drag to move · Click to pause · Double-click to reset")
+    # If we're the foreground child process, run Qt directly
+    if os.environ.get(_FOREGROUND_ENV):
+        app = QApplication(sys.argv)
+        window = PetWindow(pet=pet)
+        window.run(timer_getter=timer_getter, on_toggle_pause=on_toggle_pause, on_reset=on_reset)
+        app.exec()
         return
 
-    # Child: detach from terminal and run the Qt app
-    os.setsid()
-    # Close stdin so terminal input isn't stolen
-    devnull = os.open(os.devnull, os.O_RDWR)
-    os.dup2(devnull, 0)
+    # Parent: spawn a fresh Python process (NOT os.fork — macOS CoreFoundation is not fork-safe)
+    env = os.environ.copy()
+    env[_FOREGROUND_ENV] = "1"
+    # Find the correct Python with PySide6 — may be in a venv managed by uv
+    venv = os.environ.get("VIRTUAL_ENV")
+    if venv:
+        python_bin = os.path.join(venv, "bin", "python")
+    else:
+        python_bin = sys.executable
 
-    app = QApplication(sys.argv)
-    window = PetWindow(pet=pet)
-    window.run(timer_getter=timer_getter, on_toggle_pause=on_toggle_pause, on_reset=on_reset)
-    app.exec()
+    proc = subprocess.Popen(
+        [python_bin, "-m", "src", "start", pet_name],
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        start_new_session=True,
+        cwd=os.getcwd(),
+        env=env,
+    )
+    click.echo(f"{pet.display_name} running in background (PID {proc.pid})")
+    click.echo("Drag to move · Click to pause · Double-click to reset")
+    return
 
 
 @click.group(invoke_without_command=True)
