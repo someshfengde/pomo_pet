@@ -103,6 +103,31 @@ class TestWindowSetup:
         assert window.width() == 220
         assert window.height() == 314
 
+    def test_apply_sticky_note_behavior(self, window, monkeypatch):
+        ns_window = MagicMock()
+        ns_window.title.return_value = "TestPet"
+
+        ns_app = MagicMock()
+        ns_app.windows.return_value = [ns_window]
+
+        appkit = MagicMock()
+        appkit.NSApp = ns_app
+        appkit.NSFloatingWindowLevel = 3
+        appkit.NSWindowCollectionBehaviorCanJoinAllSpaces = 1
+        appkit.NSWindowCollectionBehaviorFullScreenAuxiliary = 256
+        appkit.NSWindowCollectionBehaviorStationary = 16
+        appkit.NSWindowCollectionBehaviorIgnoresCycle = 64
+
+        monkeypatch.setattr("src.ui.window.AppKit", appkit)
+        window.setWindowTitle("TestPet")
+
+        window._apply_sticky_note_behavior()
+
+        ns_window.setLevel_.assert_called_with(3)
+        ns_window.setCollectionBehavior_.assert_called_once()
+        ns_window.setHidesOnDeactivate_.assert_called_with(False)
+        ns_window.orderFrontRegardless.assert_called_once()
+
     def test_initial_state(self, window):
         assert window._current_anim == "idle"
         assert window._pending_anim is None

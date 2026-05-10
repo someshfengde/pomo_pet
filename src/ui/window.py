@@ -5,6 +5,11 @@ import sys
 from pathlib import Path
 from typing import Optional, Any, List, Dict
 
+try:
+    import AppKit
+except Exception:  # pragma: no cover - macOS bridge is optional in tests/non-mac runs
+    AppKit = None
+
 from PySide6.QtWidgets import QMainWindow, QApplication
 from PySide6.QtCore import Qt, QTimer, QPoint, QRect
 from PySide6.QtGui import QPainter, QPixmap, QColor, QFont, QPen, QBrush
@@ -90,6 +95,7 @@ class PetWindow(QMainWindow):
             | Qt.WindowStaysOnTopHint
             | Qt.Tool
         )
+        self.setWindowTitle(self.pet.display_name)
         self.setAttribute(Qt.WA_TranslucentBackground)
         self.setAttribute(Qt.WA_NoSystemBackground)
         self.setAttribute(Qt.WA_ShowWithoutActivating)
@@ -102,6 +108,44 @@ class PetWindow(QMainWindow):
         self._sprite_display_h = int(sprite_h * self._sprite_scale)
         self.setFixedSize(display_w, display_h)
         self.move(100, 100)
+        self._apply_sticky_note_behavior()
+
+    def _apply_sticky_note_behavior(self) -> None:
+        """Make the native macOS window float above other apps without taking focus."""
+        if AppKit is None:
+            return
+
+        try:
+            windows = list(AppKit.NSApp.windows())
+        except Exception:
+            return
+
+        target_title = self.windowTitle()
+        ns_window = None
+        for window in windows:
+            try:
+                if window.title() == target_title:
+                    ns_window = window
+                    break
+            except Exception:
+                continue
+
+        if ns_window is None:
+            return
+
+        try:
+            behavior = (
+                AppKit.NSWindowCollectionBehaviorCanJoinAllSpaces
+                | AppKit.NSWindowCollectionBehaviorFullScreenAuxiliary
+                | AppKit.NSWindowCollectionBehaviorStationary
+                | AppKit.NSWindowCollectionBehaviorIgnoresCycle
+            )
+            ns_window.setLevel_(AppKit.NSFloatingWindowLevel)
+            ns_window.setCollectionBehavior_(behavior)
+            ns_window.setHidesOnDeactivate_(False)
+            ns_window.orderFrontRegardless()
+        except Exception:
+            pass
 
     def _setup_timer(self) -> None:
         t = QTimer(self)
@@ -201,7 +245,7 @@ class PetWindow(QMainWindow):
         self._on_toggle_pause = on_toggle_pause
         self._on_reset = on_reset
         self.show()
-        # WindowStaysOnTopHint keeps it on top — no raise_() needed
+        self._apply_sticky_note_behavior()
 
     def quit_window(self) -> None:
         QApplication.instance().quit()
@@ -258,12 +302,6 @@ class PetWindow(QMainWindow):
 
         self._animate(dt)
         self.update()
-
-        # macOS: WindowStaysOnTopHint gets ignored when app loses focus.
-        # Re-show (without activating) every few ticks to stay on top.
-        self._top_tick = getattr(self, '_top_tick', 0) + 1
-        if self._top_tick % 5 == 0:
-            self.show()  # WA_ShowWithoutActivating prevents focus steal
 
     def _animate(self, dt: float) -> None:
         frames = self._animations.get(self._current_anim, [])
