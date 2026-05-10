@@ -103,30 +103,29 @@ class TestWindowSetup:
         assert window.width() == 220
         assert window.height() == 314
 
-    def test_apply_sticky_note_behavior(self, window, monkeypatch):
-        ns_window = MagicMock()
-        ns_window.title.return_value = "TestPet"
+    def test_apply_floating_level(self, window, monkeypatch):
+        """_apply_floating_level calls setLevel and setHidesOnDeactivate on NSWindow."""
+        from unittest.mock import MagicMock, call
+        from ctypes import c_void_p
 
-        ns_app = MagicMock()
-        ns_app.windows.return_value = [ns_window]
+        mock_objc = MagicMock()
+        mock_objc.sel_registerName.side_effect = lambda s: s
+        mock_objc.objc_msgSend = MagicMock()
 
-        appkit = MagicMock()
-        appkit.NSApp = ns_app
-        appkit.NSFloatingWindowLevel = 3
-        appkit.NSWindowCollectionBehaviorCanJoinAllSpaces = 1
-        appkit.NSWindowCollectionBehaviorFullScreenAuxiliary = 256
-        appkit.NSWindowCollectionBehaviorStationary = 16
-        appkit.NSWindowCollectionBehaviorIgnoresCycle = 64
+        monkeypatch.setattr("src.ui.window._objc", mock_objc)
+        monkeypatch.setattr(window, "winId", lambda: 0x12345)
 
-        monkeypatch.setattr("src.ui.window.AppKit", appkit)
-        window.setWindowTitle("TestPet")
+        window._apply_floating_level()
 
-        window._apply_sticky_note_behavior()
+        # sel_registerName called for setLevel: and setHidesOnDeactivate:
+        calls = [c[0][0] for c in mock_objc.sel_registerName.call_args_list]
+        assert b"setLevel:" in calls
+        assert b"setHidesOnDeactivate:" in calls
 
-        ns_window.setLevel_.assert_called_with(3)
-        ns_window.setCollectionBehavior_.assert_called_once()
-        ns_window.setHidesOnDeactivate_.assert_called_with(False)
-        ns_window.orderFrontRegardless.assert_called_once()
+    def test_apply_floating_level_no_objc(self, window, monkeypatch):
+        """_apply_floating_level is a no-op when _objc is None."""
+        monkeypatch.setattr("src.ui.window._objc", None)
+        window._apply_floating_level()  # should not raise
 
     def test_initial_state(self, window):
         assert window._current_anim == "idle"

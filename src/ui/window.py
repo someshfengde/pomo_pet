@@ -1,14 +1,8 @@
 """Pet display window using PySide6 (Qt) — transparent pet-only window."""
 
-import subprocess
 import sys
 from pathlib import Path
 from typing import Optional, Any, List, Dict
-
-try:
-    import AppKit
-except Exception:  # pragma: no cover - macOS bridge is optional in tests/non-mac runs
-    AppKit = None
 
 from PySide6.QtWidgets import QMainWindow, QApplication
 from PySide6.QtCore import Qt, QTimer, QPoint, QRect
@@ -17,18 +11,13 @@ from PySide6.QtGui import QPainter, QPixmap, QColor, QFont, QPen, QBrush
 from src.pets.models import AnimationDef
 from src.ui.theme import WindowConfig
 
-
-def _set_window_level_osascript(window_title: str) -> None:
-    """Use osascript to set window to float above others."""
+# macOS: ctypes bridge for AppKit calls (no pyobjc dependency needed)
+_objc = None
+if sys.platform == "darwin":
     try:
-        script = f'''
-        tell application "System Events"
-            set frontmost of process "{window_title}" to false
-        end tell
-        '''
-        subprocess.run(["osascript", "-e", script], capture_output=True, timeout=1)
+        _objc = getattr(__import__("ctypes"), "cdll").LoadLibrary("/usr/lib/libobjc.A.dylib")
     except Exception:
-        pass
+        _objc = None
 
 
 # ---------------------------------------------------------------------------
@@ -108,44 +97,54 @@ class PetWindow(QMainWindow):
         self._sprite_display_h = int(sprite_h * self._sprite_scale)
         self.setFixedSize(display_w, display_h)
         self.move(100, 100)
-        self._apply_sticky_note_behavior()
 
-    def _apply_sticky_note_behavior(self) -> None:
-        """Make the native macOS window float above other apps without taking focus."""
-        if AppKit is None:
+    def _apply_floating_level(self) -> None:
+        """Apply NSFloatingWindowLevel to the real NSWindow via ctypes.
+
+        Must be called AFTER show() so winId() returns a valid native handle.
+        Uses the ObjC runtime directly — no pyobjc dependency.
+        """
+        if _objc is None or sys.platform != "darwin":
             return
+
+        from ctypes import c_void_p, CFUNCTYPE
 
         try:
-            windows = list(AppKit.NSApp.windows())
-        except Exception:
-            return
+            # Get the native NSWindow from Qt's winId()
+            ns_window_ptr = int(self.winId())
+            if ns_window_ptr == 0:
+                return
 
-        target_title = self.windowTitle()
-        ns_window = None
-        for window in windows:
-            try:
-                if window.title() == target_title:
-                    ns_window = window
-                    break
-            except Exception:
-                continue
+            # ObjC runtime functions
+            sel_registerName = _objc.sel_registerName
+            sel_registerName.restype = c_void_p
+            sel_registerName.argtypes = [c_void_p]
 
-        if ns_window is None:
-            return
+            # Typed objc_msgSend: id (*)(id, SEL, ...)
+            MsgSendType = CFUNCTYPE(c_void_p, c_void_p, c_void_p, c_void_p)
+            objc_msgSend = MsgSendType(_objc.objc_msgSend)
 
-        try:
-            behavior = (
-                AppKit.NSWindowCollectionBehaviorCanJoinAllSpaces
-                | AppKit.NSWindowCollectionBehaviorFullScreenAuxiliary
-                | AppKit.NSWindowCollectionBehaviorStationary
-                | AppKit.NSWindowCollectionBehaviorIgnoresCycle
+            ns_window = c_void_p(ns_window_ptr)
+
+            # NSFloatingWindowLevel = 3
+            FLOATING_LEVEL = 3
+
+            # [ns_window setLevel: FLOATING_LEVEL]
+            objc_msgSend(
+                ns_window,
+                sel_registerName(b"setLevel:"),
+                c_void_p(FLOATING_LEVEL),
             )
-            ns_window.setLevel_(AppKit.NSFloatingWindowLevel)
-            ns_window.setCollectionBehavior_(behavior)
-            ns_window.setHidesOnDeactivate_(False)
-            ns_window.orderFrontRegardless()
+
+            # [ns_window setHidesOnDeactivate: NO]
+            objc_msgSend(
+                ns_window,
+                sel_registerName(b"setHidesOnDeactivate:"),
+                c_void_p(0),  # NO
+            )
+
         except Exception:
-            pass
+            pass  # non-macOS or sandboxed — graceful fallback
 
     def _setup_timer(self) -> None:
         t = QTimer(self)
@@ -245,7 +244,9 @@ class PetWindow(QMainWindow):
         self._on_toggle_pause = on_toggle_pause
         self._on_reset = on_reset
         self.show()
-        self._apply_sticky_note_behavior()
+        # Apply native floating level AFTER show() — winId() is valid now
+        # Use a timer to ensure the native window is fully created
+        QTimer.singleShot(0, self._apply_floating_level)
 
     def quit_window(self) -> None:
         QApplication.instance().quit()
