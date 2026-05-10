@@ -1,0 +1,144 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to release (e.g. v1.3.0). Leave empty to use latest tag."
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Determine tag
+        id: tag
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "${{ inputs.tag }}" ]; then
+            TAG="${{ inputs.tag }}"
+          elif [ "${{ github.event_name }}" = "push" ]; then
+            TAG="${GITHUB_REF#refs/tags/}"
+          else
+            TAG=$(git describe --tags --abbrev=0)
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          # Extract version number without v prefix
+          VERSION="${TAG#v}"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Get previous tag
+        id: prev
+        run: |
+          TAG="${{ steps.tag.outputs.tag }}"
+          PREV_TAG=$(git describe --tags --abbrev=0 "$TAG^" 2>/dev/null || echo "")
+          echo "tag=$PREV_TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Generate changelog
+        id: changelog
+        run: |
+          TAG="${{ steps.tag.outputs.tag }}"
+          PREV_TAG="${{ steps.prev.outputs.tag }}"
+
+          # Collect commits since previous tag
+          if [ -n "$PREV_TAG" ]; then
+            RANGE="${PREV_TAG}..${TAG}"
+          else
+            RANGE="$TAG"
+          fi
+
+          FEAT=""
+          FIX=""
+          OTHER=""
+
+          while IFS= read -r line; do
+            [ -z "$line" ] && continue
+            # Strip conventional commit prefix for categorization
+            if [[ "$line" =~ ^feat(\(.+\))?:\ (.+) ]]; then
+              FEAT+="- ${BASH_REMATCH[2]}"$'\n'
+            elif [[ "$line" =~ ^fix(\(.+\))?:\ (.+) ]]; then
+              FIX+="- ${BASH_REMATCH[2]}"$'\n'
+            elif [[ "$line" =~ ^(docs|chore|refactor|test|ci|style|perf)(\(.\+\))?:\ (.+) ]]; then
+              OTHER+="- ${BASH_REMATCH[3]}"$'\n'
+            else
+              OTHER+="- $line"$'\n'
+            fi
+          done < <(git log --format="%s" "$RANGE" -- 2>/dev/null || git log --format="%s")
+
+          # Count tests
+          TEST_COUNT=$(find . -name "test_*.py" -exec grep -c "def test_" {} + 2>/dev/null | awk -F: '{s+=$2} END {print s+0}')
+
+          # Build release notes
+          {
+            echo "notes<<RELEASE_EOF"
+            echo "## 🐾 Pomo Pet ${{ steps.tag.outputs.tag }}"
+            echo ""
+
+            if [ -n "$FIX" ]; then
+              echo "### Fixes (P0)"
+              echo ""
+              echo "$FIX"
+            fi
+
+            if [ -n "$FEAT" ]; then
+              echo "### New Features (P1)"
+              echo ""
+              echo "$FEAT"
+            fi
+
+            if [ -n "$OTHER" ]; then
+              echo "### Other Changes"
+              echo ""
+              echo "$OTHER"
+            fi
+
+            echo "### Install"
+            echo ""
+            echo '```bash'
+            echo 'curl -sSL https://raw.githubusercontent.com/someshfengde/pomo_pet/main/install.sh | bash'
+            echo '```'
+
+            if [ -n "$TEST_COUNT" ] && [ "$TEST_COUNT" -gt 0 ]; then
+              echo ""
+              echo "**Tests:** $TEST_COUNT passing"
+            fi
+            echo "RELEASE_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Generate release title
+        id: title
+        run: |
+          TAG="${{ steps.tag.outputs.tag }}"
+          # Use first non-conventional-commit line as summary, or fall back to tag
+          PREV_TAG="${{ steps.prev.outputs.tag }}"
+          if [ -n "$PREV_TAG" ]; then
+            RANGE="${PREV_TAG}..${TAG}"
+          else
+            RANGE="$TAG"
+          fi
+          # Grab all commit subjects for a one-line summary
+          SUMMARY=$(git log --format="%s" "$RANGE" | head -5 | sed 's/^[a-z]*: //' | sed 's/^(.*) //' | tr '\n' ', ' | sed 's/,$//')
+          echo "title=${TAG} — ${SUMMARY}" >> "$GITHUB_OUTPUT"
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.tag }}
+          name: ${{ steps.title.outputs.title }}
+          body: ${{ steps.changelog.outputs.notes }}
+          draft: false
+          prerelease: false
+          generate_release_notes: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
