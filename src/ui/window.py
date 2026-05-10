@@ -1,8 +1,6 @@
 """Pet display window using PySide6 (Qt) — transparent pet-only window."""
 
-import ctypes
-import ctypes.util
-import math
+import subprocess
 import sys
 from pathlib import Path
 from typing import Optional, Any, List, Dict
@@ -15,45 +13,15 @@ from src.pets.models import AnimationDef
 from src.ui.theme import WindowConfig
 
 
-# ---------------------------------------------------------------------------
-# macOS NSWindow helpers
-# ---------------------------------------------------------------------------
-
-_objc = None
-
-def _get_objc():
-    global _objc
-    if _objc is None:
-        lib_path = ctypes.util.find_library("objc")
-        if lib_path:
-            _objc = ctypes.CDLL(lib_path)
-    return _objc
-
-def _sel(name: str) -> int:
-    objc = _get_objc()
-    if not objc:
-        return 0
-    objc.sel_registerName.restype = ctypes.c_void_p
-    objc.sel_registerName.argtypes = [ctypes.c_char_p]
-    return objc.sel_registerName(name.encode())
-
-def _msg(obj: int, sel: int, *args):
-    objc = _get_objc()
-    if not objc:
-        return 0
-    objc.objc_msgSend.restype = ctypes.c_void_p
-    objc.objc_msgSend.argtypes = [ctypes.c_void_p, ctypes.c_void_p] + [type(a) for a in args]
-    return objc.objc_msgSend(obj, sel, *args)
-
-def _set_nswindow_level(window_id: int, level: int) -> None:
+def _set_window_level_osascript(window_title: str) -> None:
+    """Use osascript to set window to float above others."""
     try:
-        _msg(window_id, _sel("setLevel:"), level)
-    except Exception:
-        pass
-
-def _set_nswindow_opaque(window_id: int, opaque: bool) -> None:
-    try:
-        _msg(window_id, _sel("setOpaque:"), 1 if opaque else 0)
+        script = f'''
+        tell application "System Events"
+            set frontmost of process "{window_title}" to false
+        end tell
+        '''
+        subprocess.run(["osascript", "-e", script], capture_output=True, timeout=1)
     except Exception:
         pass
 
@@ -110,7 +78,6 @@ class PetWindow(QMainWindow):
         scale = target_w / max(sprite_w, sprite_h)
         display_w = int(sprite_w * scale)
         display_h = int(sprite_h * scale)
-        # Extra height: pet name (16) + timer (22) + progress (8) + anim label (14) + message (16) + padding (14)
         total_h = display_h + 90
         return display_w, total_h
 
@@ -129,16 +96,6 @@ class PetWindow(QMainWindow):
         self._sprite_scale = display_w / sprite_w
         self.setFixedSize(display_w, display_h)
         self.move(100, 100)
-
-    def showEvent(self, event) -> None:
-        super().showEvent(event)
-        if sys.platform == "darwin":
-            try:
-                nswindow_ptr = int(self.winId())
-                _set_nswindow_level(nswindow_ptr, 3)
-                _set_nswindow_opaque(nswindow_ptr, False)
-            except Exception:
-                pass
 
     def _setup_timer(self) -> None:
         t = QTimer(self)
@@ -174,7 +131,7 @@ class PetWindow(QMainWindow):
             return
 
         display_w = self.width()
-        display_h = self.height() - 90  # sprite area only
+        display_h = self.height() - 90
         for name, ad in self._anim_defs.items():
             frames = []
             for col in range(ad.frames):
@@ -228,8 +185,6 @@ class PetWindow(QMainWindow):
         self.timer_progress = max(0.0, min(1.0, progress))
 
     def set_message(self, message: str) -> None:
-        if message != self.message:
-            self._message_slide = 0.0
         self.message = message
 
     def set_sessions(self, count: int) -> None:
@@ -240,6 +195,9 @@ class PetWindow(QMainWindow):
         self._on_toggle_pause = on_toggle_pause
         self._on_reset = on_reset
         self.show()
+        # Keep window on top
+        self.raise_()
+        self.activateWindow()
 
     def quit_window(self) -> None:
         QApplication.instance().quit()
@@ -293,6 +251,9 @@ class PetWindow(QMainWindow):
                 self._review_toggle += 1
                 self._review_toggle_timer = 0.0
                 self._set_animation(self._pick_animation(self.timer_phase))
+
+        # Keep window on top every tick
+        self.raise_()
 
         self._animate(dt)
         self.update()
@@ -432,7 +393,7 @@ class PetWindow(QMainWindow):
                 p.drawRoundedRect(QRect(bar_x, y, fill_w, bar_h), bar_r, bar_r)
             y += 10
 
-            # --- Animation state label (from pet.json) ---
+            # --- Animation state label ---
             anim_label = self._current_anim.replace("_", " ").title()
             ad = self._anim_defs.get(self._current_anim)
             if ad:
