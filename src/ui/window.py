@@ -386,8 +386,9 @@ class PetWindow(QMainWindow):
         p = QPainter(self)
         p.setRenderHint(QPainter.Antialiasing)
 
-        W = self.config.width
-        H = self.config.height
+        # Use actual window size, not config
+        W = self.width()
+        H = self.height()
 
         # Clear to fully transparent
         p.setCompositionMode(QPainter.CompositionMode_Source)
@@ -398,7 +399,6 @@ class PetWindow(QMainWindow):
         frames = self._animations.get(self._current_anim, [])
         if frames and self._frame_index < len(frames):
             frame = frames[self._frame_index]
-            # Center if frame is smaller than window
             x = (W - frame.width()) // 2
             y = (H - frame.height()) // 2
             p.drawPixmap(x, y, frame)
