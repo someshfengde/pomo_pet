@@ -210,17 +210,18 @@
         }
 
         .sprite-sheet {
-            width: 1536px;
-            height: 1728px;
+            width: 192px;
+            height: 192px;
+            background-repeat: no-repeat;
+            background-size: 1536px auto;
+            background-position: 0 0;
             animation: sprite-idle 0.75s steps(6) infinite;
             image-rendering: pixelated;
-            transform: scale(0.1302);
-            transform-origin: top left;
         }
 
         @keyframes sprite-idle {
-            from { transform: scale(0.1302) translateX(0); }
-            to { transform: scale(0.1302) translateX(-1152px); }
+            from { background-position: 0 0; }
+            to { background-position: -1152px 0; }
         }
 
         .pet-timer {
@@ -501,7 +502,7 @@
             <div class="pet-window">
                 <div class="pet-name">Avocado</div>
                 <div class="sprite-container">
-                    <div class="sprite-sheet" style="background: url('https://raw.githubusercontent.com/someshfengde/pomo_pet/main/pets/avacado/spritesheet.webp') no-repeat; background-size: 1536px 1728px;"></div>
+                    <div class="sprite-sheet" style="background-image: url('https://raw.githubusercontent.com/someshfengde/pomo_pet/main/pets/avacado/spritesheet.webp');"></div>
                 </div>
                 <div class="pet-timer" id="timer">25:00</div>
                 <div class="pet-progress"><div class="pet-progress-fill"></div></div>
