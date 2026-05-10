@@ -33,7 +33,7 @@ jobs:
   deploy:
     environment:
       name: github-pages
-      url: 
+      url: "https://someshfengde.github.io/pomo_pet"
     runs-on: ubuntu-latest
     needs: build
     steps:
