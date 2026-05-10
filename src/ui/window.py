@@ -92,6 +92,7 @@ class PetWindow(QMainWindow):
         )
         self.setAttribute(Qt.WA_TranslucentBackground)
         self.setAttribute(Qt.WA_NoSystemBackground)
+        self.setAttribute(Qt.WA_ShowWithoutActivating)
 
         sprite_w = self.pet.frame_width
         sprite_h = self.pet.frame_height
@@ -200,9 +201,7 @@ class PetWindow(QMainWindow):
         self._on_toggle_pause = on_toggle_pause
         self._on_reset = on_reset
         self.show()
-        # Keep window on top
-        self.raise_()
-        self.activateWindow()
+        # WindowStaysOnTopHint keeps it on top — no raise_() needed
 
     def quit_window(self) -> None:
         QApplication.instance().quit()
@@ -256,9 +255,6 @@ class PetWindow(QMainWindow):
                 self._review_toggle += 1
                 self._review_toggle_timer = 0.0
                 self._set_animation(self._pick_animation(self.timer_phase))
-
-        # Keep window on top every tick
-        self.raise_()
 
         self._animate(dt)
         self.update()
