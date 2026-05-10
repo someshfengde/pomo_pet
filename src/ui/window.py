@@ -111,11 +111,10 @@ class PetWindow(QMainWindow):
         )
         self.setAttribute(Qt.WA_TranslucentBackground)
         self.setAttribute(Qt.WA_NoSystemBackground)
-        # Size to 3x the sprite for visibility
-        scale = 3
-        sprite_w = self.pet.frame_width * scale
-        sprite_h = self.pet.frame_height * scale
-        self._sprite_scale = scale
+        # Size window to sprite dimensions from pet.json
+        sprite_w = self.pet.frame_width
+        sprite_h = self.pet.frame_height
+        self._sprite_scale = 1
         self.setFixedSize(sprite_w, sprite_h)
         self.move(100, 100)
 
