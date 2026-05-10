@@ -28,15 +28,12 @@ A prioritized list of improvements to make Pomo Pet a truly delightful, Apple-qu
 - Fixed in `src/ui/tray.py`
 
 ### 5. Global keyboard shortcuts
-- `Cmd+Shift+P` to pause/resume
-- `Cmd+Shift+R` to reset
-- `Cmd+Shift+Q` to quit
-- **Tech:** `QShortcut` with `Qt.WindowShortcut` or macOS hotkeys
+- **DONE** — `Cmd+Shift+P` pause, `Cmd+Shift+R` reset, `Cmd+Shift+Q` quit
+- Uses `QShortcut` with `QKeySequence("Ctrl+Shift+…")` (maps to Cmd on macOS)
 
 ### 6. Pet reacts to mouse hover
-- When mouse hovers over pet, play a "waving" or "happy" animation
-- When mouse leaves, return to idle
-- **Tech:** `enterEvent` / `leaveEvent` on QMainWindow
+- **DONE** — `enterEvent` triggers waving animation, `leaveEvent` returns to phase animation
+- Uses existing `_play_once` / `_set_animation` / `_pick_animation`
 
 ### 7. Session history view
 - Show last 10 sessions in a small popup
@@ -74,9 +71,10 @@ A prioritized list of improvements to make Pomo Pet a truly delightful, Apple-qu
 - **Tech:** Extend `SessionStats` with XP/level fields
 
 ### 13. Config file support
-- `~/.pomo-pet/config.json` for persistent settings
-- Default work/break durations, volume, pet, sound on/off
-- **Tech:** New `Config` class, CLI reads from file
+- **DONE** — `~/.pomo-pet/config.json` for persistent settings
+- Default pet, work/break duration, volume, sound, custom messages file
+- `pomo-pet config` to view, `pomo-pet config key value` to set
+- CLI flags override and auto-save to config
 
 ### 14. Theme system
 - Light mode / dark mode toggle
