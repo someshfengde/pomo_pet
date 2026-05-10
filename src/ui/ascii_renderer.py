@@ -3,6 +3,8 @@
 Similar to how OpenAI Codex renders their pet animations inline.
 """
 
+import os
+import shutil
 import sys
 import time
 from pathlib import Path
@@ -25,7 +27,6 @@ def _pixel_to_char(r: int, g: int, b: int, a: int) -> str:
 
 def _image_to_ascii(img: Image.Image, width: int = 40) -> str:
     """Convert a PIL Image to ASCII art string."""
-    # Calculate height maintaining aspect ratio (terminal chars are ~2:1)
     aspect = img.height / img.width
     height = int(width * aspect * 0.5)
     
@@ -43,9 +44,45 @@ def _image_to_ascii(img: Image.Image, width: int = 40) -> str:
     return "\n".join(lines)
 
 
+def calc_ascii_width(frame_width: int, frame_height: int, max_width: Optional[int] = None) -> int:
+    """Calculate optimal ASCII width based on sprite dimensions and terminal size.
+    
+    Logic:
+    - Base ratio: ~1 ASCII char per 3-4 pixels of sprite width
+    - Clamp to terminal width (leave margin for timer text)
+    - Minimum 20, maximum 80
+    
+    Args:
+        frame_width: Width of sprite frame in pixels.
+        frame_height: Height of sprite frame in pixels.
+        max_width: Override max width. If None, uses terminal width.
+    
+    Returns:
+        Optimal ASCII width in characters.
+    """
+    # Base: ~1 char per 3.5 pixels (empirically good for readability)
+    base_width = int(frame_width / 3.5)
+    
+    # Clamp to reasonable range
+    base_width = max(20, min(base_width, 80))
+    
+    # Don't exceed terminal width (leave 10 chars margin for safety)
+    if max_width is None:
+        try:
+            term_size = shutil.get_terminal_size((80, 24))
+            max_width = term_size.columns - 10
+        except Exception:
+            max_width = 70
+    
+    return min(base_width, max_width)
+
+
 def load_ascii_frames(spritesheet_path: str, frame_width: int, frame_height: int,
-                       row: int, num_frames: int, display_width: int = 40) -> List[str]:
+                       row: int, num_frames: int, display_width: Optional[int] = None) -> List[str]:
     """Load frames from spritesheet and convert to ASCII art.
+    
+    If display_width is None, automatically calculates optimal width
+    based on sprite dimensions and terminal size.
     
     Args:
         spritesheet_path: Path to the spritesheet image.
@@ -53,7 +90,7 @@ def load_ascii_frames(spritesheet_path: str, frame_width: int, frame_height: int
         frame_height: Height of each frame in the spritesheet.
         row: Which row of the spritesheet to use.
         num_frames: Number of frames to extract.
-        display_width: Width of ASCII output in characters.
+        display_width: Width of ASCII output in characters. None = auto.
     
     Returns:
         List of ASCII art strings, one per frame.
@@ -61,6 +98,9 @@ def load_ascii_frames(spritesheet_path: str, frame_width: int, frame_height: int
     path = Path(spritesheet_path)
     if not path.exists():
         return []
+    
+    if display_width is None:
+        display_width = calc_ascii_width(frame_width, frame_height)
     
     sheet = Image.open(path).convert("RGBA")
     frames = []
@@ -82,7 +122,6 @@ class AsciiAnimator:
         self.frames = frames
         self.fps = fps
         self.loop = loop
-        self._frame_index = 0
         self._start_time = time.time()
     
     def current_frame(self) -> str:
@@ -104,15 +143,14 @@ class AsciiAnimator:
     def reset(self):
         """Reset animation to start."""
         self._start_time = time.time()
-        self._frame_index = 0
 
 
 def clear_lines(n: int):
     """Clear n lines in the terminal."""
     for _ in range(n):
-        sys.stdout.write("\033[2K")  # Clear line
-        sys.stdout.write("\033[1A")  # Move up
-    sys.stdout.write("\033[2K")  # Clear current line
+        sys.stdout.write("\033[2K")
+        sys.stdout.write("\033[1A")
+    sys.stdout.write("\033[2K")
 
 
 def render_frame(frame: str):

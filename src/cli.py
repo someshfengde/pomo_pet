@@ -26,7 +26,7 @@ def get_pets_dir() -> Path:
 @click.option("--list-pets", "list_pets_flag", is_flag=True, help="List available pets")
 @click.option("--stats", "stats_flag", is_flag=True, help="Show session statistics")
 @click.option("--no-sound", is_flag=True, help="Disable sound effects")
-@click.option("--width", "ascii_width", default=40, type=int, help="ASCII art width in characters")
+@click.option("--width", "ascii_width", default=0, type=int, help="ASCII art width (0=auto)")
 def cli(pet_name, work_minutes, break_minutes, list_pets_flag, stats_flag, no_sound, ascii_width):
     """Pomo Pet - A Pomodoro timer with animated pets!"""
 
@@ -70,7 +70,7 @@ def cli(pet_name, work_minutes, break_minutes, list_pets_flag, stats_flag, no_so
             pet.frame_width, pet.frame_height,
             row=idle_anim.row,
             num_frames=idle_anim.frames,
-            display_width=ascii_width,
+            display_width=ascii_width if ascii_width > 0 else None,
         )
         idle_fps = idle_anim.fps
     else:
