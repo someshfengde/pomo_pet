@@ -157,6 +157,7 @@ def _start_pet(pet_name: str, work_minutes: int, break_minutes: int, no_sound: b
 
 @click.group(invoke_without_command=True)
 @click.pass_context
+@click.version_option(version="1.0.0", prog_name="pomo-pet")
 @click.option("--work", "work_minutes", default=None, type=int, help="Work duration (min)")
 @click.option("--break", "break_minutes", default=None, type=int, help="Break duration (min)")
 @click.option("--volume", default=None, type=int, help="Sound volume (0-100)")
