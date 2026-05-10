@@ -9,7 +9,7 @@ from typing import Optional, Any, List, Dict
 
 from PySide6.QtWidgets import QMainWindow, QApplication
 from PySide6.QtCore import Qt, QTimer, QPoint, QRect
-from PySide6.QtGui import QPainter, QPixmap, QColor
+from PySide6.QtGui import QPainter, QPixmap, QColor, QFont, QPen, QBrush
 
 from src.pets.models import AnimationDef
 from src.ui.theme import WindowConfig
