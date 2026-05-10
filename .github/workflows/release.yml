@@ -1,13 +1,16 @@
 name: Release
 
 on:
-  push:
-    tags:
-      - "v*"
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+    branches: [main]
+
+  # Allow manual trigger for hotfixes
   workflow_dispatch:
     inputs:
       tag:
-        description: "Tag to release (e.g. v1.3.0). Leave empty to use latest tag."
+        description: "Tag to release (e.g. v1.3.0). Leave empty to auto-bump."
         required: false
         type: string
 
@@ -16,29 +19,72 @@ permissions:
 
 jobs:
   release:
+    # Only run if CI succeeded (or manual dispatch)
+    if: >
+      github.event.workflow_run.conclusion == 'success' ||
+      github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+
+      - name: Install dependencies
+        run: uv sync --all-extras
+
+      - name: Run tests (verify)
+        run: uv run pytest --tb=short -q
 
       - name: Determine tag
         id: tag
         run: |
+          # Get latest existing tag
+          LATEST=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          echo "latest=$LATEST" >> "$GITHUB_OUTPUT"
+
           if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "${{ inputs.tag }}" ]; then
+            # Manual override
             TAG="${{ inputs.tag }}"
-          elif [ "${{ github.event_name }}" = "push" ]; then
-            TAG="${GITHUB_REF#refs/tags/}"
           else
-            TAG=$(git describe --tags --abbrev=0)
+            # Auto-bump patch version
+            VERSION="${LATEST#v}"
+            IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION"
+            TAG="v${MAJOR}.${MINOR}.$((PATCH + 1))"
           fi
+
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
-          # Extract version number without v prefix
           VERSION="${TAG#v}"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
+          # Check if this tag already exists
+          if git rev-parse "$TAG" >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Skip if tag exists
+        if: steps.tag.outputs.exists == 'true'
+        run: |
+          echo "Tag ${{ steps.tag.outputs.tag }} already exists — skipping release."
+          exit 0
+
+      - name: Create tag
+        if: steps.tag.outputs.exists != 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "${{ steps.tag.outputs.tag }}" -m "Release ${{ steps.tag.outputs.tag }}"
+          git push origin "${{ steps.tag.outputs.tag }}"
+
       - name: Get previous tag
+        if: steps.tag.outputs.exists != 'true'
         id: prev
         run: |
           TAG="${{ steps.tag.outputs.tag }}"
@@ -46,12 +92,12 @@ jobs:
           echo "tag=$PREV_TAG" >> "$GITHUB_OUTPUT"
 
       - name: Generate changelog
+        if: steps.tag.outputs.exists != 'true'
         id: changelog
         run: |
           TAG="${{ steps.tag.outputs.tag }}"
           PREV_TAG="${{ steps.prev.outputs.tag }}"
 
-          # Collect commits since previous tag
           if [ -n "$PREV_TAG" ]; then
             RANGE="${PREV_TAG}..${TAG}"
           else
@@ -64,35 +110,32 @@ jobs:
 
           while IFS= read -r line; do
             [ -z "$line" ] && continue
-            # Strip conventional commit prefix for categorization
             if [[ "$line" =~ ^feat(\(.+\))?:\ (.+) ]]; then
               FEAT+="- ${BASH_REMATCH[2]}"$'\n'
             elif [[ "$line" =~ ^fix(\(.+\))?:\ (.+) ]]; then
               FIX+="- ${BASH_REMATCH[2]}"$'\n'
-            elif [[ "$line" =~ ^(docs|chore|refactor|test|ci|style|perf)(\(.\+\))?:\ (.+) ]]; then
+            elif [[ "$line" =~ ^(docs|chore|refactor|test|ci|style|perf)(\(.+\))?:\ (.+) ]]; then
               OTHER+="- ${BASH_REMATCH[3]}"$'\n'
             else
               OTHER+="- $line"$'\n'
             fi
           done < <(git log --format="%s" "$RANGE" -- 2>/dev/null || git log --format="%s")
 
-          # Count tests
           TEST_COUNT=$(find . -name "test_*.py" -exec grep -c "def test_" {} + 2>/dev/null | awk -F: '{s+=$2} END {print s+0}')
 
-          # Build release notes
           {
             echo "notes<<RELEASE_EOF"
             echo "## 🐾 Pomo Pet ${{ steps.tag.outputs.tag }}"
             echo ""
 
             if [ -n "$FIX" ]; then
-              echo "### Fixes (P0)"
+              echo "### Fixes"
               echo ""
               echo "$FIX"
             fi
 
             if [ -n "$FEAT" ]; then
-              echo "### New Features (P1)"
+              echo "### New Features"
               echo ""
               echo "$FEAT"
             fi
@@ -117,21 +160,21 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
       - name: Generate release title
+        if: steps.tag.outputs.exists != 'true'
         id: title
         run: |
           TAG="${{ steps.tag.outputs.tag }}"
-          # Use first non-conventional-commit line as summary, or fall back to tag
           PREV_TAG="${{ steps.prev.outputs.tag }}"
           if [ -n "$PREV_TAG" ]; then
             RANGE="${PREV_TAG}..${TAG}"
           else
             RANGE="$TAG"
           fi
-          # Grab all commit subjects for a one-line summary
           SUMMARY=$(git log --format="%s" "$RANGE" | head -5 | sed 's/^[a-z]*: //' | sed 's/^(.*) //' | tr '\n' ', ' | sed 's/,$//')
           echo "title=${TAG} — ${SUMMARY}" >> "$GITHUB_OUTPUT"
 
       - name: Create release
+        if: steps.tag.outputs.exists != 'true'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.tag.outputs.tag }}
