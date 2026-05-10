@@ -105,22 +105,17 @@ class PetWindow(QMainWindow):
 
     @staticmethod
     def _calc_display_size(sprite_w: int, sprite_h: int) -> tuple[int, int]:
-        """Calculate display size for the sprite.
+        """Calculate display size for the sprite + timer area.
 
-        Target: ~120px on the larger dimension.
+        Target: ~120px wide for the sprite, extra height for timer below.
         """
-        target = 120
-        max_dim = max(sprite_w, sprite_h)
-        if max_dim <= target:
-            # Small sprites: scale up to target
-            scale = target / max_dim
-        else:
-            # Large sprites: scale down to target
-            scale = target / max_dim
-
+        target_w = 120
+        scale = target_w / max(sprite_w, sprite_h)
         display_w = int(sprite_w * scale)
         display_h = int(sprite_h * scale)
-        return display_w, display_h
+        # Add space for timer (40px) + message (20px) + padding (20px)
+        total_h = display_h + 80
+        return display_w, total_h
 
     def _setup_window(self) -> None:
         self.setWindowFlags(
@@ -375,14 +370,14 @@ class PetWindow(QMainWindow):
             self.quit_window()
 
     # ------------------------------------------------------------------
-    # Paint — ONLY the pet sprite, fully transparent background
+    # Paint — pet sprite + timer + progress + message
     # ------------------------------------------------------------------
 
     def paintEvent(self, event) -> None:
         p = QPainter(self)
         p.setRenderHint(QPainter.Antialiasing)
+        p.setRenderHint(QPainter.TextAntialiasing)
 
-        # Use actual window size, not config
         W = self.width()
         H = self.height()
 
@@ -391,12 +386,54 @@ class PetWindow(QMainWindow):
         p.fillRect(QRect(0, 0, W, H), QColor(0, 0, 0, 0))
         p.setCompositionMode(QPainter.CompositionMode_SourceOver)
 
-        # Draw only the current animation frame
+        is_work = self.timer_phase == "WORK"
+        timer_color = QColor(52, 199, 89) if is_work else QColor(90, 200, 245)
+        dim_color = QColor(140, 140, 148)
+
+        # --- Pet sprite (top area) ---
         frames = self._animations.get(self._current_anim, [])
+        sprite_h = 0
         if frames and self._frame_index < len(frames):
             frame = frames[self._frame_index]
+            sprite_h = frame.height()
             x = (W - frame.width()) // 2
-            y = (H - frame.height()) // 2
-            p.drawPixmap(x, y, frame)
+            p.drawPixmap(x, 0, frame)
+
+        # --- Timer text ---
+        y = sprite_h + 4
+        timer_font = QFont("Helvetica Neue", 16)
+        timer_font.setBold(True)
+        p.setFont(timer_font)
+        p.setPen(QPen(timer_color))
+        timer_rect = QRect(0, y, W, 20)
+        p.drawText(timer_rect, Qt.AlignHCenter, self.timer_text)
+
+        # --- Progress bar ---
+        y += 22
+        bar_x = 8
+        bar_w = W - 16
+        bar_h = 3
+        bar_r = bar_h // 2
+
+        # Track
+        p.setPen(Qt.NoPen)
+        p.setBrush(QBrush(QColor(255, 255, 255, 15)))
+        p.drawRoundedRect(QRect(bar_x, y, bar_w, bar_h), bar_r, bar_r)
+
+        # Fill
+        fill_w = int(bar_w * self.timer_progress)
+        if fill_w > 0:
+            p.setBrush(QBrush(timer_color))
+            p.drawRoundedRect(QRect(bar_x, y, fill_w, bar_h), bar_r, bar_r)
+
+        # --- Message ---
+        y += 10
+        if self.message:
+            display_msg = self.message[:20] + ("..." if len(self.message) > 20 else "")
+            msg_font = QFont("Helvetica Neue", 9)
+            p.setFont(msg_font)
+            p.setPen(QPen(dim_color))
+            msg_rect = QRect(0, y, W, 14)
+            p.drawText(msg_rect, Qt.AlignHCenter, display_msg)
 
         p.end()
