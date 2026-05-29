@@ -186,6 +186,12 @@ class PetWindow(QMainWindow):
             pos = self.pos()
             self._pomo_config.update(window_x=pos.x(), window_y=pos.y())
 
+    def _nudge(self, dx: int, dy: int) -> None:
+        """Move window by a small delta (keyboard nudge)."""
+        pos = self.pos()
+        self.move(pos.x() + dx, pos.y() + dy)
+        self._save_position()
+
     def _reset_position(self) -> None:
         """Move window to center-top of primary screen."""
         screen = QApplication.primaryScreen()
@@ -240,6 +246,14 @@ class PetWindow(QMainWindow):
         # Quit
         sc_quit = QShortcut(QKeySequence("Ctrl+Shift+Q"), self)
         sc_quit.activated.connect(self.quit_window)
+
+        # Nudge window with arrow keys (Ctrl+Arrow = Cmd+Arrow on macOS)
+        for key, dx, dy in [
+            (Qt.Key_Up, 0, -20), (Qt.Key_Down, 0, 20),
+            (Qt.Key_Left, -20, 0), (Qt.Key_Right, 20, 0),
+        ]:
+            sc = QShortcut(QKeySequence(key), self)
+            sc.activated.connect(lambda d=(dx, dy): self._nudge(*d))
 
     def _shortcut_toggle_pause(self) -> None:
         if self._on_toggle_pause:
