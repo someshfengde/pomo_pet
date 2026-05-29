@@ -1,6 +1,7 @@
 """Pet dialog/message system based on timer phase."""
 
 import random
+from datetime import datetime
 from pathlib import Path
 from typing import List, Optional
 
@@ -12,6 +13,9 @@ WORK_MESSAGES = [
     "Heads down, power through!",
     "Deep work mode activated!",
     "One pomodoro at a time!",
+    "Lock in! Your future self will thank you.",
+    "Distractions are temporary. Focus is forever.",
+    "You're building something amazing right now.",
 ]
 
 BREAK_MESSAGES = [
@@ -20,6 +24,9 @@ BREAK_MESSAGES = [
     "Breathe deep, recharge!",
     "Time to stretch those legs!",
     "Relax, you're doing great!",
+    "Step away for a moment — you deserve it.",
+    "Hydrate! Your brain needs water.",
+    "Look at something far away to rest your eyes.",
 ]
 
 LONG_BREAK_MESSAGES = [
@@ -28,7 +35,16 @@ LONG_BREAK_MESSAGES = [
     "Stretch, hydrate, breathe. You've been crushing it!",
     "Step away from the screen. You deserve this.",
     "Great focus session! Recharge fully.",
+    "Go outside for a few minutes. Fresh air helps!",
+    "Grab a snack, move around. You've earned it!",
 ]
+
+# Time-of-day greetings (used as message prefix)
+_TIME_GREETINGS = {
+    "morning": ["Good morning! ☀️", "Rise and grind! 🌅", "Morning focus! 🌄"],
+    "afternoon": ["Afternoon power! 💪", "Keep the momentum! 🔥", "Afternoon push! ⚡"],
+    "evening": ["Evening focus! 🌆", "Night owl mode! 🦉", "Late grind! 🌙"],
+}
 
 # Custom messages loaded from file (one per line)
 _custom_messages: Optional[List[str]] = None
@@ -42,6 +58,17 @@ def load_custom_messages(path: str) -> None:
         lines = [line.strip() for line in p.read_text().splitlines() if line.strip()]
         if lines:
             _custom_messages = lines
+
+
+def _get_time_of_day() -> str:
+    """Return 'morning', 'afternoon', or 'evening' based on current hour."""
+    hour = datetime.now().hour
+    if hour < 12:
+        return "morning"
+    elif hour < 18:
+        return "afternoon"
+    else:
+        return "evening"
 
 
 class MessageProvider:
@@ -63,6 +90,17 @@ class MessageProvider:
 
 
 def get_message(phase: TimerPhase) -> str:
-    """Return a random message for the current timer phase."""
+    """Return a random message for the current timer phase.
+
+    For the first work session of a time period, includes a time-of-day greeting.
+    """
     messages = MessageProvider.get_messages(phase)
-    return random.choice(messages)
+    msg = random.choice(messages)
+
+    # Add time-of-day greeting for work phase (1 in 4 chance)
+    if phase == TimerPhase.WORK and random.random() < 0.25:
+        tod = _get_time_of_day()
+        greeting = random.choice(_TIME_GREETINGS[tod])
+        msg = f"{greeting} {msg}"
+
+    return msg
