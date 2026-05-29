@@ -80,3 +80,38 @@ class TestStatsCommand:
             result = runner.invoke(cli, ["stats"])
             assert result.exit_code == 0
             assert "Sessions" in result.output
+
+
+class TestConfigCommand:
+    def test_config_shows_all_fields(self, runner):
+        result = runner.invoke(cli, ["config"])
+        assert result.exit_code == 0
+        assert "default_pet" in result.output
+        assert "work_minutes" in result.output
+        assert "break_minutes" in result.output
+        assert "long_break_minutes" in result.output
+        assert "long_break_interval" in result.output
+        assert "volume" in result.output
+        assert "sound_enabled" in result.output
+
+    def test_config_shows_file_path(self, runner):
+        result = runner.invoke(cli, ["config"])
+        assert result.exit_code == 0
+        assert "config.json" in result.output
+
+    def test_config_get_single_key(self, runner):
+        result = runner.invoke(cli, ["config", "work_minutes"])
+        assert result.exit_code == 0
+        assert "work_minutes" in result.output
+
+    def test_config_set_value(self, runner, tmp_path):
+        with patch("src.core.config.CONFIG_FILE", tmp_path / "config.json"):
+            with patch("src.core.config.CONFIG_DIR", tmp_path):
+                result = runner.invoke(cli, ["config", "work_minutes", "30"])
+                assert result.exit_code == 0
+                assert "work_minutes = 30" in result.output
+
+    def test_config_unknown_key(self, runner):
+        result = runner.invoke(cli, ["config", "nonexistent"])
+        assert result.exit_code == 1
+        assert "Unknown key" in result.output
