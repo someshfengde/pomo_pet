@@ -45,6 +45,19 @@ A prioritized list of improvements to make Pomo Pet a truly delightful, Apple-qu
 - Each pet has its own timer or shares one
 - **Tech:** List of `PetWindow` instances, shared timer state
 
+### 8b. Right-click context menu
+- **DONE** — Right-click on pet window shows pause/reset/skip/quit menu
+- Styled dark glass menu matching the app aesthetic
+
+### 8c. Long break support
+- **DONE** — Every 4th session triggers a 15-minute long break
+- Configurable via `long_break_interval` and `long_break_minutes` in config
+- Purple color in UI, dedicated messages
+
+### 8d. Skip phase
+- **DONE** — `timer.skip_phase()` + `Cmd+Shift+S` shortcut
+- Available via right-click context menu
+
 ### 9. Sound volume control
 - **DONE** — `--volume 0-100` flag
 - Saves to config: `pomo-pet config volume 50`

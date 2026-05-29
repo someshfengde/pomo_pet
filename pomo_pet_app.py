@@ -105,7 +105,12 @@ def main() -> None:
     _set_macos_app_identity()
 
     # Initialize timer and state
-    timer = PomodoroTimer(work_minutes=cfg.work_minutes, break_minutes=cfg.break_minutes)
+    timer = PomodoroTimer(
+        work_minutes=cfg.work_minutes,
+        break_minutes=cfg.break_minutes,
+        long_break_minutes=cfg.long_break_minutes,
+        long_break_interval=cfg.long_break_interval,
+    )
     store = StatsStore()
     current_message = get_message(timer.phase)
     last_phase = timer.phase

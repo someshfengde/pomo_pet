@@ -86,7 +86,12 @@ def _start_pet(pet_name: str, work_minutes: int, break_minutes: int, no_sound: b
         click.echo(f"Stats: {store.summary}")
     click.echo("Drag to move · Click to pause · Double-click to reset · Q to quit")
 
-    timer = PomodoroTimer(work_minutes=work_minutes, break_minutes=break_minutes)
+    timer = PomodoroTimer(
+        work_minutes=work_minutes,
+        break_minutes=break_minutes,
+        long_break_minutes=cfg.long_break_minutes,
+        long_break_interval=cfg.long_break_interval,
+    )
     current_message = get_message(timer.phase)
     last_phase = timer.phase
     last_sessions = timer.sessions_completed
@@ -274,12 +279,14 @@ def config_cmd(key, value):
     if key is None:
         from src.core.config import CONFIG_FILE
         click.echo(f"Config file: {CONFIG_FILE}")
-        click.echo(f"  default_pet:   {cfg.default_pet}")
-        click.echo(f"  work_minutes:  {cfg.work_minutes}")
-        click.echo(f"  break_minutes: {cfg.break_minutes}")
-        click.echo(f"  volume:        {cfg.volume}")
-        click.echo(f"  sound_enabled: {cfg.sound_enabled}")
-        click.echo(f"  messages_file: {cfg.messages_file or '(none)'}")
+        click.echo(f"  default_pet:         {cfg.default_pet}")
+        click.echo(f"  work_minutes:        {cfg.work_minutes}")
+        click.echo(f"  break_minutes:       {cfg.break_minutes}")
+        click.echo(f"  long_break_minutes:  {cfg.long_break_minutes}")
+        click.echo(f"  long_break_interval: {cfg.long_break_interval}")
+        click.echo(f"  volume:              {cfg.volume}")
+        click.echo(f"  sound_enabled:       {cfg.sound_enabled}")
+        click.echo(f"  messages_file:       {cfg.messages_file or '(none)'}")
         return
 
     if value is None:

@@ -16,6 +16,8 @@ class Config:
     default_pet: str = "avocado"
     work_minutes: int = 25
     break_minutes: int = 5
+    long_break_minutes: int = 15
+    long_break_interval: int = 4  # every N sessions triggers a long break (0 to disable)
     volume: int = 80  # 0-100
     sound_enabled: bool = True
     messages_file: Optional[str] = None  # custom messages file path
