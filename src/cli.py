@@ -114,7 +114,12 @@ def _start_pet(pet_name: str, work_minutes: int, break_minutes: int, no_sound: b
                     play_session_complete()
                 notify_session_complete(timer.sessions_completed)
                 last_sessions = timer.sessions_completed
-        total = timer.work_duration if timer.phase == TimerPhase.WORK else timer.break_duration
+        if timer.phase == TimerPhase.WORK:
+            total = timer.work_duration
+        elif timer.phase == TimerPhase.LONG_BREAK:
+            total = timer.long_break_duration
+        else:
+            total = timer.break_duration
         return (
             timer.format_remaining(),
             timer.phase.value.upper(),
