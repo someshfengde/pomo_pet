@@ -22,16 +22,25 @@ def get_volume() -> int:
 
 
 def _play_file(path: Path) -> None:
-    """Play a sound file in a background thread."""
-    if path.exists() and _volume > 0:
-        # afplay -v expects a float; 1.0 = normal, 0.5 = half, etc.
-        vol_scale = _volume / 100.0
-        threading.Thread(
-            target=subprocess.run,
-            args=(["afplay", "-v", str(vol_scale), str(path)],),
-            kwargs={"capture_output": True},
-            daemon=True,
-        ).start()
+    """Play a sound file in a background thread.
+
+    Gracefully handles missing files and missing afplay (non-macOS).
+    """
+    if not path.exists() or _volume <= 0:
+        return
+    vol_scale = _volume / 100.0
+
+    def _run():
+        try:
+            subprocess.run(
+                ["afplay", "-v", str(vol_scale), str(path)],
+                capture_output=True,
+                timeout=10,
+            )
+        except (FileNotFoundError, subprocess.TimeoutExpired, OSError):
+            pass  # afplay not available or sound failed — silent fallback
+
+    threading.Thread(target=_run, daemon=True).start()
 
 
 def play_tick() -> None:

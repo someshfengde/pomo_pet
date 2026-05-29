@@ -21,12 +21,18 @@ def notify(title: str, message: str, sound: bool = True) -> None:
     safe_message = _escape_osascript(message)
     sound_arg = 'with sound name "Glass"' if sound else ""
     script = f'display notification "{safe_message}" with title "{safe_title}" {sound_arg}'
-    threading.Thread(
-        target=subprocess.run,
-        args=(["osascript", "-e", script],),
-        kwargs={"capture_output": True},
-        daemon=True,
-    ).start()
+
+    def _run():
+        try:
+            subprocess.run(
+                ["osascript", "-e", script],
+                capture_output=True,
+                timeout=5,
+            )
+        except (FileNotFoundError, subprocess.TimeoutExpired, OSError):
+            pass  # osascript not available (non-macOS) — silent fallback
+
+    threading.Thread(target=_run, daemon=True).start()
 
 
 def notify_session_complete(sessions: int) -> None:
