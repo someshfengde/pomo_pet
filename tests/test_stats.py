@@ -2,6 +2,7 @@
 
 import json
 import pytest
+from datetime import date, timedelta
 from pathlib import Path
 from src.core.stats import SessionStats, StatsStore
 
@@ -30,6 +31,27 @@ class TestSessionStats:
         assert s.current_streak == 2
         assert s.best_streak == 2
         assert s.daily_sessions == 2
+
+    def test_consecutive_days_extend_streak(self):
+        """Streak should extend when sessions happen on consecutive days."""
+        s = SessionStats()
+        yesterday = (date.today() - timedelta(days=1)).isoformat()
+        s.last_session_date = yesterday
+        s.current_streak = 3
+        s.record_session(25, 5)
+        assert s.current_streak == 4
+        assert s.best_streak == 4
+
+    def test_gap_resets_streak(self):
+        """Streak resets when there's a gap of more than 1 day."""
+        s = SessionStats()
+        two_days_ago = (date.today() - timedelta(days=2)).isoformat()
+        s.last_session_date = two_days_ago
+        s.current_streak = 10
+        s.best_streak = 10
+        s.record_session(25, 5)
+        assert s.current_streak == 1
+        assert s.best_streak == 10  # best is preserved
 
     def test_total_hours(self):
         s = SessionStats()

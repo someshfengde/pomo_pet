@@ -137,6 +137,14 @@ def _start_pet(pet_name: str, work_minutes: int, break_minutes: int, no_sound: b
         if not no_sound:
             play_click()
 
+    def on_skip():
+        nonlocal current_message, last_phase
+        timer.skip_phase()
+        current_message = get_message(timer.phase)
+        last_phase = timer.phase
+        if not no_sound:
+            play_phase_change()
+
     # macOS: rename process BEFORE Qt reads argv[0]
     _set_macos_process_name("Pomo Pet")
 
@@ -153,7 +161,8 @@ def _start_pet(pet_name: str, work_minutes: int, break_minutes: int, no_sound: b
             app.setWindowIcon(QIcon(icon_frame))
 
     window = PetWindow(pet=pet)
-    window.run(timer_getter=timer_getter, on_toggle_pause=on_toggle_pause, on_reset=on_reset)
+    window.run(timer_getter=timer_getter, on_toggle_pause=on_toggle_pause,
+               on_reset=on_reset, on_skip=on_skip)
     app.exec()
 
 
@@ -258,7 +267,8 @@ def config_cmd(key, value):
     """
     cfg = Config.load()
     if key is None:
-        click.echo(f"Config file: {cfg.__class__.__module__}")
+        from src.core.config import CONFIG_FILE
+        click.echo(f"Config file: {CONFIG_FILE}")
         click.echo(f"  default_pet:   {cfg.default_pet}")
         click.echo(f"  work_minutes:  {cfg.work_minutes}")
         click.echo(f"  break_minutes: {cfg.break_minutes}")

@@ -37,7 +37,7 @@ class TestFullWorkflow:
 
 class TestTimerIntegration:
     def test_work_cycle(self):
-        timer = PomodoroTimer(work_minutes=1, break_minutes=1)
+        timer = PomodoroTimer(work_minutes=1, break_minutes=1, long_break_interval=0)
         for _ in range(60):
             timer.tick()
         assert timer.phase == TimerPhase.BREAK

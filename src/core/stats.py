@@ -2,7 +2,7 @@
 
 import json
 from dataclasses import dataclass, asdict
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from pathlib import Path
 from typing import Optional
 
@@ -34,10 +34,23 @@ class SessionStats:
         self.total_break_minutes += break_minutes
         self.daily_sessions += 1
 
-        # Streak logic
+        # Streak logic: continue if last session was today or yesterday
         if self.last_session_date == today:
+            # Same day — keep counting
             self.current_streak += 1
+        elif self.last_session_date:
+            try:
+                last = date.fromisoformat(self.last_session_date)
+                if date.today() - last == timedelta(days=1):
+                    # Consecutive day — extend streak
+                    self.current_streak += 1
+                else:
+                    # Gap — reset streak
+                    self.current_streak = 1
+            except ValueError:
+                self.current_streak = 1
         else:
+            # First ever session
             self.current_streak = 1
 
         self.best_streak = max(self.best_streak, self.current_streak)

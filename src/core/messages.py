@@ -22,6 +22,14 @@ BREAK_MESSAGES = [
     "Relax, you're doing great!",
 ]
 
+LONG_BREAK_MESSAGES = [
+    "Long break! Take a real rest 🌿",
+    "You've earned a longer break — go for a walk!",
+    "Stretch, hydrate, breathe. You've been crushing it!",
+    "Step away from the screen. You deserve this.",
+    "Great focus session! Recharge fully.",
+]
+
 # Custom messages loaded from file (one per line)
 _custom_messages: Optional[List[str]] = None
 
@@ -31,7 +39,7 @@ def load_custom_messages(path: str) -> None:
     global _custom_messages
     p = Path(path)
     if p.exists():
-        lines = [l.strip() for l in p.read_text().splitlines() if l.strip()]
+        lines = [line.strip() for line in p.read_text().splitlines() if line.strip()]
         if lines:
             _custom_messages = lines
 
@@ -45,6 +53,8 @@ class MessageProvider:
             return _custom_messages
         if phase == TimerPhase.WORK:
             return WORK_MESSAGES
+        if phase == TimerPhase.LONG_BREAK:
+            return LONG_BREAK_MESSAGES
         return BREAK_MESSAGES
 
     @staticmethod

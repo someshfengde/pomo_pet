@@ -4,6 +4,11 @@ import subprocess
 import threading
 
 
+def _escape_osascript(s: str) -> str:
+    """Escape a string for safe embedding in an osascript double-quoted literal."""
+    return s.replace("\\", "\\\\").replace('"', '\\"')
+
+
 def notify(title: str, message: str, sound: bool = True) -> None:
     """Show a native macOS notification.
 
@@ -12,8 +17,10 @@ def notify(title: str, message: str, sound: bool = True) -> None:
         message: Notification body.
         sound: Play the default notification sound.
     """
-    sound_arg = "with sound name \"Glass\"" if sound else ""
-    script = f'display notification "{message}" with title "{title}" {sound_arg}'
+    safe_title = _escape_osascript(title)
+    safe_message = _escape_osascript(message)
+    sound_arg = 'with sound name "Glass"' if sound else ""
+    script = f'display notification "{safe_message}" with title "{safe_title}" {sound_arg}'
     threading.Thread(
         target=subprocess.run,
         args=(["osascript", "-e", script],),

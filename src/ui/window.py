@@ -4,9 +4,9 @@ import sys
 from pathlib import Path
 from typing import Optional, Any, List, Dict
 
-from PySide6.QtWidgets import QMainWindow, QApplication
+from PySide6.QtWidgets import QMainWindow, QApplication, QMenu
 from PySide6.QtCore import Qt, QTimer, QPoint, QRect
-from PySide6.QtGui import QPainter, QPixmap, QColor, QFont, QPen, QBrush, QShortcut, QKeySequence
+from PySide6.QtGui import QPainter, QPixmap, QColor, QFont, QPen, QBrush, QShortcut, QKeySequence, QAction, QCursor
 
 from src.pets.models import AnimationDef
 from src.ui.theme import WindowConfig
@@ -60,6 +60,7 @@ class PetWindow(QMainWindow):
         self._timer_getter = None
         self._on_toggle_pause = None
         self._on_reset = None
+        self._on_skip = None
         self._last_phase: Optional[str] = None
 
         self._setup_window()
@@ -226,6 +227,7 @@ class PetWindow(QMainWindow):
                 if n in self._animations:
                     return n
         else:
+            # BREAK and LONG_BREAK both use idle/relaxed animations
             for n in ("idle", "waiting", "waving"):
                 if n in self._animations:
                     return n
@@ -248,14 +250,73 @@ class PetWindow(QMainWindow):
     def set_sessions(self, count: int) -> None:
         self.sessions = count
 
-    def run(self, timer_getter=None, on_toggle_pause=None, on_reset=None) -> None:
+    def run(self, timer_getter=None, on_toggle_pause=None, on_reset=None,
+            on_skip=None) -> None:
         self._timer_getter = timer_getter
         self._on_toggle_pause = on_toggle_pause
         self._on_reset = on_reset
+        self._on_skip = on_skip
         self.show()
         # Apply native floating level AFTER show() — winId() is valid now
         # Use a timer to ensure the native window is fully created
         QTimer.singleShot(0, self._apply_floating_level)
+
+    def _show_context_menu(self) -> None:
+        """Show a right-click context menu with timer controls."""
+        menu = QMenu(self)
+        menu.setStyleSheet("""
+            QMenu {
+                background: rgba(36, 36, 40, 230);
+                color: white;
+                border: 1px solid rgba(255, 255, 255, 15);
+                border-radius: 8px;
+                padding: 4px;
+                font-family: 'Helvetica Neue';
+                font-size: 13px;
+            }
+            QMenu::item {
+                padding: 6px 20px 6px 12px;
+                border-radius: 4px;
+            }
+            QMenu::item:selected {
+                background: rgba(90, 200, 245, 60);
+            }
+            QMenu::separator {
+                height: 1px;
+                background: rgba(255, 255, 255, 10);
+                margin: 4px 8px;
+            }
+        """)
+
+        # Pause / Resume
+        pause_text = "▶  Resume" if self.paused else "⏸  Pause"
+        pause_action = QAction(pause_text, self)
+        pause_action.setShortcut(QKeySequence("Ctrl+Shift+P"))
+        pause_action.triggered.connect(self._shortcut_toggle_pause)
+        menu.addAction(pause_action)
+
+        # Reset
+        reset_action = QAction("↺  Reset Timer", self)
+        reset_action.setShortcut(QKeySequence("Ctrl+Shift+R"))
+        reset_action.triggered.connect(self._shortcut_reset)
+        menu.addAction(reset_action)
+
+        # Skip phase
+        if self._on_skip:
+            skip_action = QAction("⏭  Skip Phase", self)
+            skip_action.setShortcut(QKeySequence("Ctrl+Shift+S"))
+            skip_action.triggered.connect(self._on_skip)
+            menu.addAction(skip_action)
+
+        menu.addSeparator()
+
+        # Quit
+        quit_action = QAction("✕  Quit", self)
+        quit_action.setShortcut(QKeySequence("Ctrl+Shift+Q"))
+        quit_action.triggered.connect(self.quit_window)
+        menu.addAction(quit_action)
+
+        menu.exec(QCursor.pos())
 
     def quit_window(self) -> None:
         QApplication.instance().quit()
@@ -342,6 +403,9 @@ class PetWindow(QMainWindow):
     # ------------------------------------------------------------------
 
     def mousePressEvent(self, event) -> None:
+        if event.button() == Qt.RightButton:
+            self._show_context_menu()
+            return
         if event.button() == Qt.LeftButton:
             self._drag_pos = event.globalPosition().toPoint() - self.pos()
             self._drag_prev_x = event.globalPosition().toPoint().x()
@@ -411,8 +475,13 @@ class PetWindow(QMainWindow):
             p.fillRect(QRect(0, 0, W, H), QColor(0, 0, 0, 0))
             p.setCompositionMode(QPainter.CompositionMode_SourceOver)
 
-            is_work = self.timer_phase == "WORK"
-            timer_color = QColor(52, 199, 89) if is_work else QColor(90, 200, 245)
+            # Phase-aware colors
+            if self.timer_phase == "WORK":
+                timer_color = QColor(52, 199, 89)   # green
+            elif self.timer_phase == "LONG_BREAK":
+                timer_color = QColor(190, 140, 255)  # purple for long breaks
+            else:
+                timer_color = QColor(90, 200, 245)   # blue for short breaks
             dim_color = QColor(140, 140, 148)
             y = 14  # top margin
 
