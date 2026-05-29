@@ -660,11 +660,29 @@ class PetWindow(QMainWindow):
             # --- Pet sprite ---
             frames = self._animations.get(self._current_anim, [])
             sprite_h = 0
+            sprite_y = y
             if frames and self._frame_index < len(frames):
                 frame = frames[self._frame_index]
                 sprite_h = frame.height()
                 x = (W - frame.width()) // 2
                 p.drawPixmap(x, y, frame)
+
+            # --- Pause indicator overlay ---
+            if self.paused and sprite_h > 0:
+                # Semi-transparent dark overlay over the sprite
+                overlay_rect = QRect(0, sprite_y, W, sprite_h)
+                p.fillRect(overlay_rect, QColor(0, 0, 0, 80))
+                # Pause icon (two vertical bars)
+                bar_w = 6
+                bar_h = 24
+                gap = 8
+                cx = W // 2
+                cy = sprite_y + sprite_h // 2
+                p.setPen(Qt.NoPen)
+                p.setBrush(QBrush(QColor(255, 255, 255, 200)))
+                p.drawRoundedRect(cx - gap - bar_w, cy - bar_h // 2, bar_w, bar_h, 2, 2)
+                p.drawRoundedRect(cx + gap, cy - bar_h // 2, bar_w, bar_h, 2, 2)
+
             y += sprite_h + 10
 
             # --- Subtle backdrop behind UI text area ---
