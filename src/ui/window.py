@@ -465,6 +465,14 @@ class PetWindow(QMainWindow):
 
         menu.addSeparator()
 
+        # Show/Hide toggle
+        hide_text = "🙈  Hide Pet" if self.isVisible() else "👀  Show Pet"
+        hide_action = QAction(hide_text, self)
+        hide_action.triggered.connect(self._toggle_visibility)
+        menu.addAction(hide_action)
+
+        menu.addSeparator()
+
         # Quit
         quit_action = QAction("✕  Quit", self)
         quit_action.setShortcut(QKeySequence("Ctrl+Shift+Q"))
@@ -475,6 +483,14 @@ class PetWindow(QMainWindow):
 
     def quit_window(self) -> None:
         QApplication.instance().quit()
+
+    def _toggle_visibility(self) -> None:
+        """Toggle window visibility — hide/show the pet."""
+        if self.isVisible():
+            self.hide()
+        else:
+            self.show()
+            QTimer.singleShot(0, self._apply_floating_level)
 
     # ------------------------------------------------------------------
     # Tick
