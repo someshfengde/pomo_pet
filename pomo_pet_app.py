@@ -168,9 +168,33 @@ def main() -> None:
         if cfg.sound_enabled:
             play_click()
 
+    def on_skip():
+        nonlocal current_message, last_phase
+        timer.skip_phase()
+        current_message = get_message(timer.phase)
+        last_phase = timer.phase
+        if cfg.sound_enabled:
+            play_phase_change()
+
     # Create and show the pet window
     window = PetWindow(pet=pet, pomo_config=cfg)
-    window.run(timer_getter=timer_getter, on_toggle_pause=on_toggle_pause, on_reset=on_reset)
+
+    # System tray integration
+    from src.ui.tray import TrayManager
+    tray = TrayManager(on_pause=on_toggle_pause, on_reset=on_reset,
+                       on_quit=lambda: app.quit())
+    tray.show()
+
+    # Update tray tooltip with timer status each tick
+    _original_timer_getter = timer_getter
+    def timer_getter_with_tray():
+        result = _original_timer_getter()
+        remaining, phase, sessions, message, progress, paused = result
+        tray.update_timer(remaining, phase)
+        return result
+
+    window.run(timer_getter=timer_getter_with_tray, on_toggle_pause=on_toggle_pause,
+               on_reset=on_reset, on_skip=on_skip)
 
     # Show stats in console if any
     if store.stats.total_sessions > 0:
