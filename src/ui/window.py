@@ -41,6 +41,7 @@ class PetWindow(QMainWindow):
         self.message: str = "Let's focus!"
         self.sessions: int = 0
         self.paused: bool = False
+        self._mini_mode: bool = False  # compact mode: timer + pet only
 
         # Animation
         self._animations: Dict[str, List[QPixmap]] = {}
@@ -467,6 +468,12 @@ class PetWindow(QMainWindow):
 
         menu.addSeparator()
 
+        # Mini mode toggle
+        mini_text = "📐  Full Mode" if self._mini_mode else "📐  Mini Mode"
+        mini_action = QAction(mini_text, self)
+        mini_action.triggered.connect(self._toggle_mini_mode)
+        menu.addAction(mini_action)
+
         # Show/Hide toggle
         hide_text = "🙈  Hide Pet" if self.isVisible() else "👀  Show Pet"
         hide_action = QAction(hide_text, self)
@@ -493,6 +500,19 @@ class PetWindow(QMainWindow):
         else:
             self.show()
             QTimer.singleShot(0, self._apply_floating_level)
+
+    def _toggle_mini_mode(self) -> None:
+        """Toggle between full and mini (compact) display mode."""
+        self._mini_mode = not self._mini_mode
+        # Recalculate window size
+        sprite_w = self.pet.frame_width
+        sprite_h = self.pet.frame_height
+        if self._mini_mode:
+            # Mini mode: just timer + small padding
+            self.setFixedSize(220, 60)
+        else:
+            display_w, display_h = self._calc_display_size(sprite_w, sprite_h)
+            self.setFixedSize(display_w, display_h)
 
     # ------------------------------------------------------------------
     # Tick
@@ -664,6 +684,21 @@ class PetWindow(QMainWindow):
             else:
                 timer_color = Theme.TIMER_TEXT_BREAK
             dim_color = Theme.TEXT_SECONDARY
+
+            # --- Mini mode: compact timer-only display ---
+            if self._mini_mode:
+                # Backdrop
+                p.setPen(Qt.NoPen)
+                p.setBrush(QBrush(QColor(0, 0, 0, 120)))
+                p.drawRoundedRect(QRect(2, 2, W - 4, H - 4), 8, 8)
+                # Timer text centered
+                timer_font = QFont("Helvetica Neue", 20)
+                timer_font.setBold(True)
+                p.setFont(timer_font)
+                p.setPen(QPen(timer_color))
+                p.drawText(QRect(0, 0, W, H), Qt.AlignCenter, self.timer_text)
+                return
+
             y = 14  # top margin
 
             # --- Pet name (from pet.json displayName) ---
