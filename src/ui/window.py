@@ -196,6 +196,32 @@ class PetWindow(QMainWindow):
             self.move(x, y)
             self._save_position()
 
+    def _move_to(self, position: str) -> None:
+        """Move window to a predefined screen position."""
+        screen = QApplication.primaryScreen()
+        if not screen:
+            return
+        geo = screen.availableGeometry()
+        margin = 20
+        w, h = self.width(), self.height()
+
+        if position == "top_left":
+            x, y = geo.x() + margin, geo.y() + margin
+        elif position == "top_right":
+            x, y = geo.x() + geo.width() - w - margin, geo.y() + margin
+        elif position == "bottom_left":
+            x, y = geo.x() + margin, geo.y() + geo.height() - h - margin
+        elif position == "bottom_right":
+            x, y = geo.x() + geo.width() - w - margin, geo.y() + geo.height() - h - margin
+        elif position == "center":
+            x = geo.x() + (geo.width() - w) // 2
+            y = geo.y() + (geo.height() - h) // 2
+        else:
+            return
+
+        self.move(x, y)
+        self._save_position()
+
     def _setup_timer(self) -> None:
         t = QTimer(self)
         t.timeout.connect(self._tick)
@@ -394,6 +420,20 @@ class PetWindow(QMainWindow):
         reset_pos_action = QAction("📍  Reset Position", self)
         reset_pos_action.triggered.connect(self._reset_position)
         menu.addAction(reset_pos_action)
+
+        # Move to submenu
+        move_menu = menu.addMenu("📌  Move to")
+        positions = [
+            ("↖  Top Left", "top_left"),
+            ("↗  Top Right", "top_right"),
+            ("↙  Bottom Left", "bottom_left"),
+            ("↘  Bottom Right", "bottom_right"),
+            ("⊙  Center", "center"),
+        ]
+        for label, pos_id in positions:
+            action = QAction(label, self)
+            action.triggered.connect(lambda checked, p=pos_id: self._move_to(p))
+            move_menu.addAction(action)
 
         menu.addSeparator()
 
