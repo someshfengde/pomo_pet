@@ -39,10 +39,14 @@ A prioritized list of improvements to make Pomo Pet a truly delightful, Apple-qu
 - **DONE** — `QSystemTrayIcon` with Pause/Reset/Quit menu
 - Tooltip shows timer + phase
 - Fixed in `src/ui/tray.py`
+- **Enhanced:** Clean green circle icon with gradient highlight, dark glass-styled menu
+- **Enhanced:** Single-click on tray icon toggles pause/resume
 
 ### 5. Global keyboard shortcuts
 - **DONE** — `Cmd+Shift+P` pause, `Cmd+Shift+R` reset, `Cmd+Shift+Q` quit
 - Uses `QShortcut` with `QKeySequence("Ctrl+Shift+…")` (maps to Cmd on macOS)
+- **Enhanced:** Arrow keys nudge window position by 20px (auto-saved)
+- **Enhanced:** Move-to submenu with 5 predefined positions (corners + center)
 
 ### 6. Pet reacts to mouse hover
 - **DONE** — `enterEvent` triggers waving animation, `leaveEvent` returns to phase animation
@@ -80,6 +84,7 @@ A prioritized list of improvements to make Pomo Pet a truly delightful, Apple-qu
 - **DONE** — `--messages-file path/to/messages.txt`
 - One message per line, random selection
 - Saves to config: `pomo-pet config messages_file ~/msgs.txt`
+- **Enhanced:** More messages (8 work, 3 break, 3 long break), time-of-day greetings (☀️/💪/🌆)
 
 ---
 
