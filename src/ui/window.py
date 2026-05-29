@@ -179,6 +179,9 @@ class PetWindow(QMainWindow):
         # Qt.ApplicationActive = 4, Qt.ApplicationInactive = 2
         # Re-apply in both cases to be safe — the call is cheap.
         QTimer.singleShot(0, self._apply_floating_level)
+        # Also re-apply after a short delay to catch race conditions
+        # where macOS re-orders windows after the state change completes.
+        QTimer.singleShot(300, self._apply_floating_level)
 
     def _save_position(self) -> None:
         """Save current window position to persistent config."""
