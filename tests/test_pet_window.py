@@ -167,6 +167,10 @@ class TestAnimationSystem:
     def test_pick_break(self, window):
         assert window._pick_animation("BREAK") == "idle"
 
+    def test_pick_long_break(self, window):
+        """LONG_BREAK uses idle/relaxed animations like BREAK."""
+        assert window._pick_animation("LONG_BREAK") == "idle"
+
     def test_animate_uses_pet_json_fps(self, window):
         window._current_anim = "idle"
         window._frame_index = 0
