@@ -82,7 +82,9 @@ class TrayManager:
 
     def update_timer(self, text: str, phase: str):
         """Update the tray tooltip with current timer."""
-        self.tray.setToolTip(f"Pomo Pet — {text} ({phase})")
+        phase_display = phase.replace("_", " ").title()
+        emoji = {"Work": "🔴", "Break": "🟢", "Long Break": "🟣"}.get(phase_display, "⚪")
+        self.tray.setToolTip(f"Pomo Pet {emoji} {text} — {phase_display}")
 
     def _toggle_pause(self):
         self._is_paused = not self._is_paused
