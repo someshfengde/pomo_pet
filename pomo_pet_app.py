@@ -41,7 +41,7 @@ from src.core.stats import StatsStore
 from src.core.config import Config
 from src.ui.window import PetWindow
 from src.ui.sounds import play_phase_change, play_session_complete, play_click, set_volume
-from src.ui.notifications import notify_session_complete, notify_break_over
+from src.ui.notifications import notify_session_complete, notify_break_over, notify_long_break
 
 
 def _set_macos_app_identity() -> None:
@@ -133,6 +133,8 @@ def main() -> None:
                     play_phase_change()
                 if timer.phase == TimerPhase.WORK:
                     notify_break_over()
+                elif timer.phase == TimerPhase.LONG_BREAK:
+                    notify_long_break()
                 last_phase = timer.phase
             if timer.sessions_completed > last_sessions:
                 store.record_session(cfg.work_minutes, cfg.break_minutes)
