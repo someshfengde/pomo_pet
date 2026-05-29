@@ -169,7 +169,7 @@ def main() -> None:
             play_click()
 
     # Create and show the pet window
-    window = PetWindow(pet=pet)
+    window = PetWindow(pet=pet, pomo_config=cfg)
     window.run(timer_getter=timer_getter, on_toggle_pause=on_toggle_pause, on_reset=on_reset)
 
     # Show stats in console if any

@@ -27,10 +27,12 @@ if sys.platform == "darwin":
 
 class PetWindow(QMainWindow):
 
-    def __init__(self, pet: Any, config: Optional[WindowConfig] = None, parent=None) -> None:
+    def __init__(self, pet: Any, config: Optional[WindowConfig] = None,
+                 pomo_config: Any = None, parent=None) -> None:
         super().__init__(parent)
         self.pet = pet
         self.config = config or WindowConfig()
+        self._pomo_config = pomo_config  # persistent config for saving window position
 
         # State
         self.timer_text: str = "25:00"
@@ -99,7 +101,22 @@ class PetWindow(QMainWindow):
         self._sprite_display_w = int(sprite_w * self._sprite_scale)
         self._sprite_display_h = int(sprite_h * self._sprite_scale)
         self.setFixedSize(display_w, display_h)
-        self.move(100, 100)
+
+        # Restore saved position or use default
+        if self._pomo_config and self._pomo_config.window_x is not None and self._pomo_config.window_y is not None:
+            x, y = self._pomo_config.window_x, self._pomo_config.window_y
+            # Ensure the window is visible on at least one screen
+            on_screen = False
+            for screen in QApplication.screens():
+                if screen.geometry().contains(x, y):
+                    on_screen = True
+                    break
+            if on_screen:
+                self.move(x, y)
+            else:
+                self.move(100, 100)
+        else:
+            self.move(100, 100)
 
     def _apply_floating_level(self) -> None:
         """Apply NSFloatingWindowLevel to the real NSWindow.
@@ -115,24 +132,69 @@ class PetWindow(QMainWindow):
             if ns_view_ptr == 0:
                 return
 
-            # Convert the raw pointer to an ObjC object
-            from ctypes import c_void_p, py_object, pythonapi
-            pythonapi.PyObjCObject_New.restype = py_object
-            pythonapi.PyObjCObject_New.argtypes = [c_void_p, c_void_p, c_void_p]
-            ns_view = pythonapi.PyObjCObject_New(
-                c_void_p(ns_view_ptr), 0, 0
-            )
+            # Convert the raw pointer to an ObjC object (cached on first call)
+            if not hasattr(self, '_pyobjc_new'):
+                from ctypes import c_void_p, py_object, pythonapi
+                pythonapi.PyObjCObject_New.restype = py_object
+                pythonapi.PyObjCObject_New.argtypes = [c_void_p, c_void_p, c_void_p]
+                self._pyobjc_new = pythonapi.PyObjCObject_New
+                self._c_void_p = c_void_p
+
+            ns_view = self._pyobjc_new(self._c_void_p(ns_view_ptr), 0, 0)
 
             # winId() returns the NSView — get the NSWindow from it
             ns_window = ns_view.window()
             if ns_window is None:
                 return
 
+            # Use NSFloatingWindowLevel (3) — stays above normal windows
+            # but below system UI.  Re-applied periodically so macOS cannot
+            # silently drop the level after focus changes or Space switches.
             ns_window.setLevel_(_AppKit.NSFloatingWindowLevel)
             ns_window.setHidesOnDeactivate_(False)
 
+            # Make the window appear on ALL Spaces/Desktops so it never
+            # disappears when the user switches to a different Space.
+            # NSWindowCollectionBehaviorCanJoinAllSpaces = 1 << 0
+            # NSWindowCollectionBehaviorStationary = 1 << 1
+            # Combined = 3
+            ns_window.setCollectionBehavior_(1 | 2)  # CanJoinAllSpaces | Stationary
+
+            # Ensure the window is ordered to the front of its level.
+            # This is more reliable than Qt's raise_() because it operates
+            # at the native window server level.
+            ns_window.orderFrontRegardless()
+
+            # Ensure the window is visible (not miniaturized/hidden).
+            if ns_window.isMiniaturized():
+                ns_window.deminiaturize_(None)
+            if not ns_window.isVisible():
+                ns_window.makeKeyAndOrderFront_(None)
+
         except Exception:
             pass  # graceful fallback
+
+    def _on_app_state_changed(self, state) -> None:
+        """Re-apply floating level when application state changes."""
+        # Qt.ApplicationActive = 4, Qt.ApplicationInactive = 2
+        # Re-apply in both cases to be safe — the call is cheap.
+        QTimer.singleShot(0, self._apply_floating_level)
+
+    def _save_position(self) -> None:
+        """Save current window position to persistent config."""
+        if self._pomo_config is not None:
+            pos = self.pos()
+            self._pomo_config.update(window_x=pos.x(), window_y=pos.y())
+
+    def _reset_position(self) -> None:
+        """Move window to center-top of primary screen."""
+        screen = QApplication.primaryScreen()
+        if screen:
+            geo = screen.availableGeometry()
+            x = geo.x() + (geo.width() - self.width()) // 2
+            y = geo.y() + 100
+            self.move(x, y)
+            self._save_position()
 
     def _setup_timer(self) -> None:
         t = QTimer(self)
@@ -261,6 +323,24 @@ class PetWindow(QMainWindow):
         # Use a timer to ensure the native window is fully created
         QTimer.singleShot(0, self._apply_floating_level)
 
+        # Periodically re-apply the floating level so macOS cannot silently
+        # drop it after focus changes, Space switches, or fullscreen exits.
+        self._float_timer = QTimer(self)
+        self._float_timer.timeout.connect(self._apply_floating_level)
+        self._float_timer.start(2000)  # every 2 seconds
+
+        # Re-apply immediately when the application state changes (e.g. user
+        # switches to another app and back).
+        app = QApplication.instance()
+        if app is not None:
+            app.applicationStateChanged.connect(self._on_app_state_changed)
+
+        # Also re-apply when the screen changes (Space switch, display connect).
+        # screenChanged lives on QWindow, which we reach via QWidget.windowHandle().
+        wh = self.windowHandle()
+        if wh is not None:
+            wh.screenChanged.connect(lambda _: QTimer.singleShot(100, self._apply_floating_level))
+
     def _show_context_menu(self) -> None:
         """Show a right-click context menu with timer controls."""
         menu = QMenu(self)
@@ -307,6 +387,13 @@ class PetWindow(QMainWindow):
             skip_action.setShortcut(QKeySequence("Ctrl+Shift+S"))
             skip_action.triggered.connect(self._on_skip)
             menu.addAction(skip_action)
+
+        menu.addSeparator()
+
+        # Reset Position
+        reset_pos_action = QAction("📍  Reset Position", self)
+        reset_pos_action.triggered.connect(self._reset_position)
+        menu.addAction(reset_pos_action)
 
         menu.addSeparator()
 
@@ -431,6 +518,9 @@ class PetWindow(QMainWindow):
                 moved = abs(delta.x()) + abs(delta.y())
                 if moved < 5 and self._on_toggle_pause:
                     self._on_toggle_pause()
+                elif moved >= 5:
+                    # Save window position after drag
+                    self._save_position()
             self._drag_pos = None
             self._drag_start_pos = None
             if not self._pending_anim:
@@ -444,6 +534,11 @@ class PetWindow(QMainWindow):
     def keyPressEvent(self, event) -> None:
         if event.key() in (Qt.Key_Escape, Qt.Key_Q):
             self.quit_window()
+
+    def showEvent(self, event) -> None:
+        """Re-apply floating level when window is shown."""
+        super().showEvent(event)
+        QTimer.singleShot(0, self._apply_floating_level)
 
     def enterEvent(self, event) -> None:
         """Mouse enters window — play waving animation."""
@@ -504,6 +599,17 @@ class PetWindow(QMainWindow):
                 p.drawPixmap(x, y, frame)
             y += sprite_h + 10
 
+            # --- Subtle backdrop behind UI text area ---
+            # A rounded dark translucent pill so the timer/dots/message
+            # stay readable against any desktop wallpaper.
+            ui_top = y - 6
+            ui_bottom = H - 6
+            pill_margin = 10
+            pill_rect = QRect(pill_margin, ui_top, W - 2 * pill_margin, ui_bottom - ui_top)
+            p.setPen(Qt.NoPen)
+            p.setBrush(QBrush(QColor(0, 0, 0, 90)))
+            p.drawRoundedRect(pill_rect, 10, 10)
+
             # --- Timer text ---
             timer_font = QFont("Helvetica Neue", 22)
             timer_font.setBold(True)
@@ -514,8 +620,8 @@ class PetWindow(QMainWindow):
             y += 32
 
             # --- Progress bar ---
-            bar_x = 20
-            bar_w = W - 40
+            bar_x = 28
+            bar_w = W - 56
             bar_h = 4
             bar_r = bar_h // 2
 

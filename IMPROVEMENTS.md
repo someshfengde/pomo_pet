@@ -13,10 +13,23 @@ A prioritized list of improvements to make Pomo Pet a truly delightful, Apple-qu
 ### 2. Always-on-top unreliable
 - **DONE** — Use `NSWindow.setLevel_(NSFloatingWindowLevel)` via ctypes
 - Replaces hacky `raise_()` timer
+- **Enhanced:** Periodic re-application every 2s, app state change handler, screen/Space change handler
+- **Enhanced:** `setCollectionBehavior_(CanJoinAllSpaces | Stationary)` for all Spaces support
+- **Enhanced:** `orderFrontRegardless()` + visibility checks (deminiaturize, make visible)
+- **Enhanced:** Cached ctypes helpers for performance
 
 ### 3. Pet sprite rendering quality
 - `smoothscale` can produce blurry output on retina displays
 - **Fix:** Load at 2x resolution, use `Qt.KeepAspectRatioByExpanding`, let Qt handle retina scaling
+
+### 3b. Window position persistence
+- **DONE** — Window position saved to `~/.pomo-pet/config.json` on drag
+- Restored on next launch
+- "📍 Reset Position" option in right-click context menu
+
+### 3c. UI readability backdrop
+- **DONE** — Semi-transparent dark backdrop pill behind timer/dots/message area
+- Ensures text is readable against any desktop wallpaper
 
 ---
 

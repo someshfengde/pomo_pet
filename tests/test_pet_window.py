@@ -331,3 +331,41 @@ class TestRun:
         window._tick()
         assert window.timer_text == "10:00"
         assert window.paused is False
+
+
+class TestWindowPosition:
+    def test_default_position(self, test_pet):
+        """Without pomo_config, window starts at (100, 100)."""
+        w = PetWindow(pet=test_pet)
+        assert w.pos().x() == 100
+        assert w.pos().y() == 100
+        w.close()
+
+    def test_restores_saved_position(self, test_pet):
+        """With pomo_config having saved position, window restores it."""
+        from unittest.mock import MagicMock
+        mock_cfg = MagicMock()
+        mock_cfg.window_x = 500
+        mock_cfg.window_y = 300
+        w = PetWindow(pet=test_pet, pomo_config=mock_cfg)
+        assert w.pos().x() == 500
+        assert w.pos().y() == 300
+        w.close()
+
+    def test_save_position(self, test_pet):
+        """_save_position writes current position to pomo_config."""
+        from unittest.mock import MagicMock
+        mock_cfg = MagicMock()
+        mock_cfg.window_x = None
+        mock_cfg.window_y = None
+        w = PetWindow(pet=test_pet, pomo_config=mock_cfg)
+        w.move(420, 280)
+        w._save_position()
+        mock_cfg.update.assert_called_once_with(window_x=420, window_y=280)
+        w.close()
+
+    def test_save_position_no_config(self, test_pet):
+        """_save_position is a no-op when pomo_config is None."""
+        w = PetWindow(pet=test_pet)
+        w._save_position()  # should not raise
+        w.close()

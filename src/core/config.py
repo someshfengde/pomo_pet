@@ -21,6 +21,8 @@ class Config:
     volume: int = 80  # 0-100
     sound_enabled: bool = True
     messages_file: Optional[str] = None  # custom messages file path
+    window_x: Optional[int] = None  # saved window position X
+    window_y: Optional[int] = None  # saved window position Y
 
     @classmethod
     def load(cls) -> "Config":

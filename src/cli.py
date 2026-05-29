@@ -39,7 +39,8 @@ def _set_macos_process_name(name: str) -> None:
         pass
 
 
-def _start_pet(pet_name: str, work_minutes: int, break_minutes: int, no_sound: bool) -> None:
+def _start_pet(pet_name: str, work_minutes: int, break_minutes: int, no_sound: bool,
+               long_break_minutes: int = 15, long_break_interval: int = 4) -> None:
     """Launch a pet with timer."""
     pets = list_pets(get_pets_dir())
     pet = next((p for p in pets if p.id == pet_name), None)
@@ -89,8 +90,8 @@ def _start_pet(pet_name: str, work_minutes: int, break_minutes: int, no_sound: b
     timer = PomodoroTimer(
         work_minutes=work_minutes,
         break_minutes=break_minutes,
-        long_break_minutes=cfg.long_break_minutes,
-        long_break_interval=cfg.long_break_interval,
+        long_break_minutes=long_break_minutes,
+        long_break_interval=long_break_interval,
     )
     current_message = get_message(timer.phase)
     last_phase = timer.phase
@@ -172,25 +173,21 @@ def _start_pet(pet_name: str, work_minutes: int, break_minutes: int, no_sound: b
             icon_frame = sheet.copy(0, 0, pet.frame_width, pet.frame_height)
             app.setWindowIcon(QIcon(icon_frame))
 
-    window = PetWindow(pet=pet)
+    cfg_obj = Config.load()
+    window = PetWindow(pet=pet, pomo_config=cfg_obj)
 
     # System tray integration
     from src.ui.tray import TrayManager
-    tray = TrayManager(parent=None)
-    tray.on_pause = on_toggle_pause
-    tray.on_reset = on_reset
-    tray.on_skip = on_skip
-    tray.on_quit = lambda: app.quit()
-    tray.on_toggle_visibility = lambda: window.hide() if window.isVisible() else window.show()
+    tray = TrayManager(on_pause=on_toggle_pause, on_reset=on_reset,
+                       on_quit=lambda: app.quit())
     tray.show()
 
-    # Update tray with timer status each tick (piggyback on timer_getter)
+    # Update tray tooltip with timer status each tick
     _original_timer_getter = timer_getter
     def timer_getter_with_tray():
         result = _original_timer_getter()
         remaining, phase, sessions, message, progress, paused = result
-        tray.set_paused(paused)
-        tray.update_timer(remaining, phase, sessions, store.summary)
+        tray.update_timer(remaining, phase)
         return result
 
     window.run(timer_getter=timer_getter_with_tray, on_toggle_pause=on_toggle_pause,
@@ -258,7 +255,8 @@ def start(ctx, pet_name):
     """
     cfg = ctx.obj["config"]
     pet = pet_name or cfg.default_pet
-    _start_pet(pet, ctx.obj["work"], ctx.obj["break"], ctx.obj["no_sound"])
+    _start_pet(pet, ctx.obj["work"], ctx.obj["break"], ctx.obj["no_sound"],
+               cfg.long_break_minutes, cfg.long_break_interval)
 
 
 @cli.command("list")
