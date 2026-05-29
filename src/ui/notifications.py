@@ -52,3 +52,11 @@ def notify_timer_paused() -> None:
         "Click the pet to resume.",
         sound=False,
     )
+
+
+def notify_long_break() -> None:
+    """Notify when a long break starts."""
+    notify(
+        "Long Break! 🌿",
+        "Great work! Take a well-deserved rest.",
+    )

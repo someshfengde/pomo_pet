@@ -17,7 +17,7 @@ from src.core.messages import get_message, load_custom_messages
 from src.core.stats import StatsStore
 from src.core.config import Config
 from src.ui.sounds import play_phase_change, play_session_complete, play_click, set_volume
-from src.ui.notifications import notify_session_complete, notify_break_over
+from src.ui.notifications import notify_session_complete, notify_break_over, notify_long_break
 
 
 def get_pets_dir() -> Path:
@@ -112,6 +112,8 @@ def _start_pet(pet_name: str, work_minutes: int, break_minutes: int, no_sound: b
                     play_phase_change()
                 if timer.phase == TimerPhase.WORK:
                     notify_break_over()
+                elif timer.phase == TimerPhase.LONG_BREAK:
+                    notify_long_break()
                 last_phase = timer.phase
             if timer.sessions_completed > last_sessions:
                 store.record_session(work_minutes, break_minutes)
@@ -171,7 +173,27 @@ def _start_pet(pet_name: str, work_minutes: int, break_minutes: int, no_sound: b
             app.setWindowIcon(QIcon(icon_frame))
 
     window = PetWindow(pet=pet)
-    window.run(timer_getter=timer_getter, on_toggle_pause=on_toggle_pause,
+
+    # System tray integration
+    from src.ui.tray import TrayManager
+    tray = TrayManager(parent=None)
+    tray.on_pause = on_toggle_pause
+    tray.on_reset = on_reset
+    tray.on_skip = on_skip
+    tray.on_quit = lambda: app.quit()
+    tray.on_toggle_visibility = lambda: window.hide() if window.isVisible() else window.show()
+    tray.show()
+
+    # Update tray with timer status each tick (piggyback on timer_getter)
+    _original_timer_getter = timer_getter
+    def timer_getter_with_tray():
+        result = _original_timer_getter()
+        remaining, phase, sessions, message, progress, paused = result
+        tray.set_paused(paused)
+        tray.update_timer(remaining, phase, sessions, store.summary)
+        return result
+
+    window.run(timer_getter=timer_getter_with_tray, on_toggle_pause=on_toggle_pause,
                on_reset=on_reset, on_skip=on_skip)
     app.exec()
 
