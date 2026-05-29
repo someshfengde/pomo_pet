@@ -31,6 +31,19 @@ A prioritized list of improvements to make Pomo Pet a truly delightful, Apple-qu
 - **DONE** — Semi-transparent dark backdrop pill behind timer/dots/message area
 - Ensures text is readable against any desktop wallpaper
 
+### 3d. Pause indicator overlay
+- **DONE** — When timer is paused, shows semi-transparent overlay with pause icon on pet
+- Clear visual feedback that the timer is paused
+
+### 3e. Mini/compact mode
+- **DONE** — 📐 Mini Mode toggle in context menu
+- Shows only timer text with dark backdrop (60px tall)
+- Useful for minimal overlay during focused work
+
+### 3f. Celebration glow effect
+- **DONE** — Golden glow on timer text when session completes
+- Fades over 2 seconds, visual reward for completing a pomodoro
+
 ---
 
 ## 🟡 P1 — High Priority (next sprint)
