@@ -401,12 +401,23 @@ class PetWindow(QMainWindow):
             QMenu::item:selected {
                 background: rgba(90, 200, 245, 60);
             }
+            QMenu::item:disabled {
+                color: rgba(255, 255, 255, 160);
+            }
             QMenu::separator {
                 height: 1px;
                 background: rgba(255, 255, 255, 10);
                 margin: 4px 8px;
             }
         """)
+
+        # Timer status header
+        phase_emoji = {"WORK": "🔴", "BREAK": "🟢", "LONG_BREAK": "🟣"}.get(self.timer_phase, "⚪")
+        status_text = f"{phase_emoji}  {self.timer_text}  ·  {self.timer_phase.replace('_', ' ').title()}"
+        status_action = QAction(status_text, self)
+        status_action.setEnabled(False)
+        menu.addAction(status_action)
+        menu.addSeparator()
 
         # Pause / Resume
         pause_text = "▶  Resume" if self.paused else "⏸  Pause"
