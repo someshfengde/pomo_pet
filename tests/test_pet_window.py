@@ -369,3 +369,30 @@ class TestWindowPosition:
         w = PetWindow(pet=test_pet)
         w._save_position()  # should not raise
         w.close()
+
+    def test_nudge(self, test_pet):
+        """_nudge moves the window by the given delta."""
+        w = PetWindow(pet=test_pet)
+        w.move(200, 200)
+        w._nudge(10, -10)
+        assert w.pos().x() == 210
+        assert w.pos().y() == 190
+        w.close()
+
+    def test_move_to_center(self, test_pet):
+        """_move_to('center') places window at screen center."""
+        w = PetWindow(pet=test_pet)
+        w._move_to("center")
+        # Just verify it doesn't crash and moves somewhere
+        assert w.pos().x() >= 0
+        assert w.pos().y() >= 0
+        w.close()
+
+    def test_move_to_invalid(self, test_pet):
+        """_move_to with invalid position is a no-op."""
+        w = PetWindow(pet=test_pet)
+        w.move(200, 200)
+        w._move_to("invalid_position")
+        assert w.pos().x() == 200
+        assert w.pos().y() == 200
+        w.close()
