@@ -53,26 +53,36 @@ pomo-pet config volume 50
 
 | Action | How |
 |--------|-----|
-| Move pet | Click + drag |
-| Pause / Resume | Single click |
-| Reset timer | Double click |
+| Move pet | Click + drag (or arrow keys) |
+| Pause / Resume | Single click (or `Cmd+Shift+P`) |
+| Reset timer | Double click (or `Cmd+Shift+R`) |
 | Context menu | Right-click |
 | Skip phase | Right-click → Skip Phase |
+| Hide/Show pet | Right-click → Hide/Show |
+| Mini mode | Right-click → Mini Mode |
 | Quit | `Q` / `ESC` / Right-click → Quit |
 
-**Keyboard shortcuts:** `Cmd+Shift+P` pause · `Cmd+Shift+R` reset · `Cmd+Shift+Q` quit
+**Keyboard shortcuts:** `Cmd+Shift+P` pause · `Cmd+Shift+R` reset · `Cmd+Shift+Q` quit · Arrow keys nudge position
 
 ## Features
 
+- **Always on top** — pet stays visible above all other windows (7-layer reliability)
 - **Animated desktop pet** — floating transparent window with 9 animation states
 - **Pomodoro timer** — work / break / long break with progress bar
 - **Smart long breaks** — every 4th session triggers a 15-minute rest (configurable)
 - **Pet reactions** — animations change based on timer state, hover, dragging
+- **Pause indicator** — visual overlay when timer is paused
+- **Celebration glow** — golden glow effect when sessions complete
+- **Mini mode** — compact timer-only display for minimal overlay
 - **Sound effects** — phase changes, session completions, clicks
 - **macOS notifications** — native alerts when sessions complete
 - **Session statistics** — streaks, total focus time, daily counts (persisted)
-- **Right-click menu** — pause, reset, skip phase, quit
+- **Right-click menu** — timer status, pause, reset, skip, move-to, hide, mini mode, quit
+- **Window position persistence** — remembers where you placed the pet
+- **Move-to positions** — quick snap to corners or center
 - **Custom messages** — bring your own motivational quotes via file
+- **Time-of-day greetings** — morning/afternoon/evening motivational messages
+- **System tray** — menu bar icon with pause/reset/quit
 
 ## Adding Pets
 
@@ -114,7 +124,7 @@ Browse [Petdex](https://petdex.dev/) for spritesheet-compatible pets.
 
 ```bash
 make install    # Install dependencies
-make test       # Run tests (141 passing)
+make test       # Run tests (159 passing)
 make test-all   # Run with coverage
 make run        # Launch with avocado
 make app        # Build macOS .app bundle
