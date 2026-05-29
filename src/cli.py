@@ -274,9 +274,24 @@ def list_cmd():
 
 
 @cli.command()
-def stats():
-    """Show session statistics."""
+@click.option("--format", "fmt", type=click.Choice(["text", "json", "csv"]),
+              default="text", help="Output format")
+def stats(fmt):
+    """Show session statistics.
+
+    \b
+    Examples:
+      pomo-pet stats                  # Show stats as text
+      pomo-pet stats --format json    # Export as JSON
+      pomo-pet stats --format csv     # Export as CSV
+    """
     store = StatsStore()
+    if fmt == "json":
+        click.echo(store.export_json())
+        return
+    if fmt == "csv":
+        click.echo(store.export_csv(), nl=False)
+        return
     s = store.stats
     click.echo(f"Sessions:      {s.total_sessions}")
     click.echo(f"Focus time:    {s.total_hours}h ({s.total_focus_minutes}min)")
@@ -336,6 +351,64 @@ def config_cmd(key, value):
 
     cfg.update(**{key: value})
     click.echo(f"Set {key} = {value}")
+
+
+# Pomodoro technique presets
+PRESETS = {
+    "classic": {"work": 25, "break": 5, "long_break": 15, "interval": 4,
+                "desc": "Classic Pomodoro (25/5, long break every 4)"},
+    "52-17": {"work": 52, "break": 17, "long_break": 0, "interval": 0,
+              "desc": "52/17 Rule (52min work, 17min break)"},
+    "90min": {"work": 90, "break": 20, "long_break": 0, "interval": 0,
+              "desc": "90-minute Deep Work (90/20)"},
+    "sprint": {"work": 15, "break": 3, "long_break": 10, "interval": 4,
+               "desc": "Sprint (15/3, long break every 4)"},
+    "custom": {"work": 25, "break": 5, "long_break": 15, "interval": 4,
+               "desc": "Custom (set your own via config)"},
+}
+
+
+@cli.command("presets")
+def presets_cmd():
+    """Show available Pomodoro technique presets.
+
+    \b
+    Examples:
+      pomo-pet presets                  # List all presets
+      pomo-pet presets --apply classic  # Apply a preset
+    """
+    click.echo("Available presets:")
+    for name, p in PRESETS.items():
+        click.echo(f"  {name:10s}  {p['desc']}")
+
+
+@cli.command("apply")
+@click.argument("preset_name")
+@click.pass_context
+def apply_cmd(ctx, preset_name):
+    """Apply a Pomodoro technique preset.
+
+    \b
+    Examples:
+      pomo-pet apply classic   # 25/5 with long breaks
+      pomo-pet apply 52-17     # 52/17 rule
+      pomo-pet apply 90min     # 90-minute deep work
+    """
+    if preset_name not in PRESETS:
+        click.echo(f"Unknown preset: {preset_name}. Run 'pomo-pet presets' to see options.", err=True)
+        sys.exit(1)
+    p = PRESETS[preset_name]
+    cfg = Config.load()
+    cfg.update(
+        work_minutes=p["work"],
+        break_minutes=p["break"],
+        long_break_minutes=p["long_break"],
+        long_break_interval=p["interval"],
+    )
+    click.echo(f"Applied '{preset_name}': {p['desc']}")
+    click.echo(f"  Work: {p['work']}min | Break: {p['break']}min")
+    if p["interval"] > 0:
+        click.echo(f"  Long break: {p['long_break']}min every {p['interval']} sessions")
 
 
 @cli.command()

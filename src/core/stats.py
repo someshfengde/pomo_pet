@@ -1,5 +1,7 @@
 """Session statistics tracking and persistence."""
 
+import csv
+import io
 import json
 from dataclasses import dataclass, asdict
 from datetime import datetime, date, timedelta
@@ -91,6 +93,19 @@ class StatsStore:
     def record_session(self, focus_minutes: int, break_minutes: int) -> None:
         self.stats.record_session(focus_minutes, break_minutes)
         self.save()
+
+    def export_json(self) -> str:
+        """Export stats as a JSON string."""
+        return json.dumps(asdict(self.stats), indent=2)
+
+    def export_csv(self) -> str:
+        """Export stats as a CSV string."""
+        buf = io.StringIO()
+        writer = csv.writer(buf)
+        writer.writerow(["metric", "value"])
+        for key, val in asdict(self.stats).items():
+            writer.writerow([key, val])
+        return buf.getvalue()
 
     @property
     def summary(self) -> str:

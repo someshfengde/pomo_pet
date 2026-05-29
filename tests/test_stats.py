@@ -86,3 +86,21 @@ class TestStatsStore:
         store.record_session(25, 5)
         assert "1 sessions" in store.summary
         assert "today" in store.summary
+
+    def test_export_json(self, tmp_path):
+        path = tmp_path / "stats.json"
+        store = StatsStore(path=path)
+        store.record_session(25, 5)
+        exported = store.export_json()
+        data = json.loads(exported)
+        assert data["total_sessions"] == 1
+        assert data["total_focus_minutes"] == 25
+
+    def test_export_csv(self, tmp_path):
+        path = tmp_path / "stats.json"
+        store = StatsStore(path=path)
+        store.record_session(25, 5)
+        exported = store.export_csv()
+        assert "metric,value" in exported
+        assert "total_sessions,1" in exported
+        assert "total_focus_minutes,25" in exported
