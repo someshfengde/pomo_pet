@@ -99,9 +99,9 @@ A prioritized list of improvements to make Pomo Pet a truly delightful, Apple-qu
 - **Tech:** New widget with countdown + instructions
 
 ### 16. Pomodoro technique variants
-- 52/17 rule (52min work, 17min break)
-- 90-minute deep work blocks
-- **Tech:** Preset configurations in CLI
+- **DONE** — `pomo-pet presets` to list, `pomo-pet apply <name>` to apply
+- Presets: classic (25/5), 52-17, 90min, sprint (15/3), custom
+- Each preset sets work/break/long_break/interval in one command
 
 ### 17. Focus mode integration
 - macOS Focus mode detection
@@ -109,9 +109,9 @@ A prioritized list of improvements to make Pomo Pet a truly delightful, Apple-qu
 - **Tech:** `subprocess` polling or macOS notifications API
 
 ### 18. Export statistics
-- `pomo-pet --export stats.csv` for data export
-- JSON/CSV formats
-- **Tech:** Extend `StatsStore` with export methods
+- **DONE** — `pomo-pet stats --format json` or `--format csv`
+- StatsStore.export_json() and export_csv() methods
+- Works with pipe: `pomo-pet stats --format json | jq .`
 
 ### 19. Multi-language support
 - Translate messages to other languages

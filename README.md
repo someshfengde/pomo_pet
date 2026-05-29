@@ -30,7 +30,13 @@ pomo-pet start              # Launch default pet (avocado)
 pomo-pet start avocado      # Launch specific pet
 pomo-pet list               # See available pets
 pomo-pet stats              # View session statistics
+pomo-pet stats --format json  # Export stats as JSON
 pomo-pet config             # View all config settings
+
+# Presets
+pomo-pet presets            # List Pomodoro technique presets
+pomo-pet apply classic      # Apply classic 25/5 preset
+pomo-pet apply 52-17        # Apply 52/17 rule preset
 
 # Custom durations
 pomo-pet --work 30 --break 10 start
