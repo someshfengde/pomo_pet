@@ -4,7 +4,7 @@
 
 [![Python 3.13+](https://img.shields.io/badge/python-3.13+-blue.svg?logo=python&logoColor=white)](https://python.org)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-120%20passed-brightgreen.svg)](#testing)
+[![Tests](https://img.shields.io/badge/tests-141%20passed-brightgreen.svg)](#testing)
 
 ## Quick Start
 
@@ -30,12 +30,17 @@ pomo-pet start              # Launch default pet (avocado)
 pomo-pet start avocado      # Launch specific pet
 pomo-pet list               # See available pets
 pomo-pet stats              # View session statistics
+pomo-pet config             # View all config settings
 
 # Custom durations
 pomo-pet --work 30 --break 10 start
 
 # Disable sounds
 pomo-pet --no-sound start
+
+# Persistent config
+pomo-pet config work_minutes 30
+pomo-pet config volume 50
 ```
 
 ## Controls
@@ -45,16 +50,23 @@ pomo-pet --no-sound start
 | Move pet | Click + drag |
 | Pause / Resume | Single click |
 | Reset timer | Double click |
-| Quit | `Q` or `ESC` |
+| Context menu | Right-click |
+| Skip phase | Right-click → Skip Phase |
+| Quit | `Q` / `ESC` / Right-click → Quit |
 
-## What It Does
+**Keyboard shortcuts:** `Cmd+Shift+P` pause · `Cmd+Shift+R` reset · `Cmd+Shift+Q` quit
 
-- Floating transparent window with animated pet sprite
-- Pomodoro timer with progress bar
-- Pet animations react to timer state (work, break, idle, dragging)
-- Sound effects on phase changes and session completions
-- macOS native notifications
-- Session statistics persisted across runs
+## Features
+
+- **Animated desktop pet** — floating transparent window with 9 animation states
+- **Pomodoro timer** — work / break / long break with progress bar
+- **Smart long breaks** — every 4th session triggers a 15-minute rest (configurable)
+- **Pet reactions** — animations change based on timer state, hover, dragging
+- **Sound effects** — phase changes, session completions, clicks
+- **macOS notifications** — native alerts when sessions complete
+- **Session statistics** — streaks, total focus time, daily counts (persisted)
+- **Right-click menu** — pause, reset, skip phase, quit
+- **Custom messages** — bring your own motivational quotes via file
 
 ## Adding Pets
 
@@ -96,9 +108,11 @@ Browse [Petdex](https://petdex.dev/) for spritesheet-compatible pets.
 
 ```bash
 make install    # Install dependencies
-make test       # Run tests (120 passing)
+make test       # Run tests (141 passing)
 make test-all   # Run with coverage
 make run        # Launch with avocado
+make app        # Build macOS .app bundle
+make app-dmg    # Build DMG for distribution
 ```
 
 **Project structure:**
@@ -106,18 +120,20 @@ make run        # Launch with avocado
 src/
 ├── cli.py              # Click CLI with subcommands
 ├── core/
-│   ├── timer.py        # PomodoroTimer (pause, reset)
-│   ├── messages.py     # Phase-aware messages
-│   └── stats.py        # Session statistics
+│   ├── timer.py        # PomodoroTimer (pause, reset, skip, long breaks)
+│   ├── messages.py     # Phase-aware messages (work, break, long break)
+│   ├── stats.py        # Session statistics with streak tracking
+│   └── config.py       # Persistent config (~/.pomo-pet/config.json)
 ├── pets/
 │   ├── models.py       # Pet, AnimationDef
 │   ├── loader.py       # Load from pet.json
 │   └── renderer.py     # Pillow spritesheet utils
 └── ui/
-    ├── theme.py        # Design tokens
-    ├── window.py       # PySide6 window + animations
-    ├── sounds.py       # Sound effects
-    └── notifications.py # macOS notifications
+    ├── theme.py        # Design tokens & colors
+    ├── window.py       # PySide6 window, animations, context menu
+    ├── sounds.py       # Sound effects (macOS afplay)
+    ├── notifications.py # macOS native notifications
+    └── tray.py         # System tray integration
 ```
 
 ## License

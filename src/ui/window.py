@@ -9,7 +9,7 @@ from PySide6.QtCore import Qt, QTimer, QPoint, QRect
 from PySide6.QtGui import QPainter, QPixmap, QColor, QFont, QPen, QBrush, QShortcut, QKeySequence, QAction, QCursor
 
 from src.pets.models import AnimationDef
-from src.ui.theme import WindowConfig
+from src.ui.theme import WindowConfig, Theme
 
 # macOS: load AppKit for native window control (pyobjc handles ARM64 ABI correctly)
 _AppKit = None
@@ -475,21 +475,21 @@ class PetWindow(QMainWindow):
             p.fillRect(QRect(0, 0, W, H), QColor(0, 0, 0, 0))
             p.setCompositionMode(QPainter.CompositionMode_SourceOver)
 
-            # Phase-aware colors
+            # Phase-aware colors from Theme
             if self.timer_phase == "WORK":
-                timer_color = QColor(52, 199, 89)   # green
+                timer_color = Theme.TIMER_TEXT_WORK
             elif self.timer_phase == "LONG_BREAK":
                 timer_color = QColor(190, 140, 255)  # purple for long breaks
             else:
-                timer_color = QColor(90, 200, 245)   # blue for short breaks
-            dim_color = QColor(140, 140, 148)
+                timer_color = Theme.TIMER_TEXT_BREAK
+            dim_color = Theme.TEXT_SECONDARY
             y = 14  # top margin
 
             # --- Pet name (from pet.json displayName) ---
             name_font = QFont("Helvetica Neue", 11)
             name_font.setBold(True)
             p.setFont(name_font)
-            p.setPen(QPen(QColor(220, 220, 224)))
+            p.setPen(QPen(Theme.TEXT_PRIMARY))
             name_rect = QRect(0, y, W, 16)
             p.drawText(name_rect, Qt.AlignHCenter, self.pet.display_name)
             y += 22
@@ -520,7 +520,7 @@ class PetWindow(QMainWindow):
             bar_r = bar_h // 2
 
             p.setPen(Qt.NoPen)
-            p.setBrush(QBrush(QColor(255, 255, 255, 20)))
+            p.setBrush(QBrush(Theme.PROGRESS_BG))
             p.drawRoundedRect(QRect(bar_x, y, bar_w, bar_h), bar_r, bar_r)
 
             fill_w = int(bar_w * self.timer_progress)
@@ -537,7 +537,7 @@ class PetWindow(QMainWindow):
             dots_x_start = (W - (max_dots * dot_size + (max_dots - 1) * (dot_spacing - dot_size))) // 2
             for i in range(max_dots):
                 dx = dots_x_start + i * dot_spacing
-                color = QColor(255, 200, 50) if i < self.sessions else QColor(60, 60, 66)
+                color = Theme.DOT_FILLED if i < self.sessions else Theme.DOT_EMPTY
                 p.setBrush(QBrush(color))
                 p.setPen(Qt.NoPen)
                 p.drawEllipse(dx, dot_y, dot_size, dot_size)
@@ -553,7 +553,7 @@ class PetWindow(QMainWindow):
 
             anim_font = QFont("Helvetica Neue", 8)
             p.setFont(anim_font)
-            p.setPen(QPen(QColor(100, 100, 108)))
+            p.setPen(QPen(Theme.TEXT_DIM))
             anim_rect = QRect(0, y, W, 12)
             p.drawText(anim_rect, Qt.AlignHCenter, anim_info)
             y += 16

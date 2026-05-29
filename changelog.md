@@ -2,6 +2,27 @@
 
 All notable changes to Pomo Pet are documented here.
 
+## [1.3.0] — 2026-05-29
+
+### Fixed
+- **Streak logic bug** — consecutive daily sessions now correctly extend the streak instead of resetting to 1
+- **Notification injection** — escape quotes in osascript notification messages to prevent failures
+- **Config CLI path** — `pomo-pet config` now shows the actual config file path (`~/.pomo-pet/config.json`)
+
+### Added
+- **Long break support** — every 4th session triggers a 15-minute long break (configurable via `long_break_interval` and `long_break_minutes`)
+- **Skip phase** — `timer.skip_phase()` to advance to the next phase immediately
+- **Right-click context menu** — pause, reset, skip phase, quit (with styled dark glass menu)
+- **LONG_BREAK phase** — new timer phase with distinct purple color in the UI
+- **Long break messages** — dedicated motivational messages for long breaks
+- **Keyboard shortcut** — `Cmd+Shift+S` to skip phase
+- 10 new tests for streak logic, long breaks, skip phase, and long break messages
+
+### Changed
+- Window `paintEvent` now uses `Theme` constants instead of hardcoded colors
+- README updated with new controls, features, and project structure
+- Timer `_transition_if_needed` now handles BREAK → WORK and LONG_BREAK → WORK transitions
+
 ## [1.0.0] — 2026-05-10
 
 ### Added

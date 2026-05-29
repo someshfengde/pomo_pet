@@ -19,6 +19,11 @@ class TestMessageProvider:
         messages = MessageProvider.get_messages(TimerPhase.BREAK)
         assert len(messages) > 0
 
+    def test_long_break_messages_exist(self):
+        """Long break phase has at least one message."""
+        messages = MessageProvider.get_messages(TimerPhase.LONG_BREAK)
+        assert len(messages) > 0
+
     def test_get_message_returns_string(self):
         """get_message returns a non-empty string."""
         msg = get_message(TimerPhase.WORK)
@@ -31,12 +36,24 @@ class TestMessageProvider:
         assert isinstance(msg, str)
         assert len(msg) > 0
 
+    def test_get_message_long_break_phase(self):
+        """get_message works for long break phase."""
+        msg = get_message(TimerPhase.LONG_BREAK)
+        assert isinstance(msg, str)
+        assert len(msg) > 0
+
     def test_messages_are_different_types_for_phases(self):
         """Work and break messages are distinct sets."""
         work_msgs = MessageProvider.get_messages(TimerPhase.WORK)
         break_msgs = MessageProvider.get_messages(TimerPhase.BREAK)
         # At least some messages should differ
         assert set(work_msgs) != set(break_msgs)
+
+    def test_long_break_messages_distinct(self):
+        """Long break messages differ from regular break messages."""
+        break_msgs = set(MessageProvider.get_messages(TimerPhase.BREAK))
+        long_msgs = set(MessageProvider.get_messages(TimerPhase.LONG_BREAK))
+        assert break_msgs != long_msgs
 
     def test_custom_messages_override(self):
         """Custom messages can be provided."""
