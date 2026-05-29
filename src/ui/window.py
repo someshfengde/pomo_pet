@@ -416,7 +416,9 @@ class PetWindow(QMainWindow):
 
         # Timer status header
         phase_emoji = {"WORK": "🔴", "BREAK": "🟢", "LONG_BREAK": "🟣"}.get(self.timer_phase, "⚪")
-        status_text = f"{phase_emoji}  {self.timer_text}  ·  {self.timer_phase.replace('_', ' ').title()}"
+        phase_display = self.timer_phase.replace("_", " ").title()
+        session_text = f" · {self.sessions} 🍅" if self.sessions > 0 else ""
+        status_text = f"{phase_emoji}  {self.timer_text}  ·  {phase_display}{session_text}"
         status_action = QAction(status_text, self)
         status_action.setEnabled(False)
         menu.addAction(status_action)
