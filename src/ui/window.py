@@ -43,6 +43,9 @@ class PetWindow(QMainWindow):
         self.paused: bool = False
         self._mini_mode: bool = False  # compact mode: timer + pet only
 
+        # Celebration effect (golden flash on session complete)
+        self._celebration_timer: float = 0.0  # seconds remaining for celebration glow
+
         # Animation
         self._animations: Dict[str, List[QPixmap]] = {}
         self._anim_defs: Dict[str, AnimationDef] = {}
@@ -530,6 +533,7 @@ class PetWindow(QMainWindow):
                 triggered = True
             if not triggered and sessions > self.sessions and self.sessions > 0:
                 self._play_once("waving")
+                self._celebration_timer = 2.0  # 2 second golden glow
                 triggered = True
             if not triggered and phase != self.timer_phase and self._last_phase is not None:
                 self._play_once("jumping")
@@ -565,6 +569,9 @@ class PetWindow(QMainWindow):
                 self._set_animation(self._pick_animation(self.timer_phase))
 
         self._animate(dt)
+        # Decay celebration effect
+        if self._celebration_timer > 0:
+            self._celebration_timer = max(0, self._celebration_timer - dt)
         self.update()
 
     def _animate(self, dt: float) -> None:
@@ -753,8 +760,20 @@ class PetWindow(QMainWindow):
             timer_font = QFont("Helvetica Neue", 22)
             timer_font.setBold(True)
             p.setFont(timer_font)
-            p.setPen(QPen(timer_color))
             timer_rect = QRect(0, y, W, 28)
+
+            # Celebration glow effect
+            if self._celebration_timer > 0:
+                alpha = int(255 * (self._celebration_timer / 2.0))
+                glow_color = QColor(255, 200, 50, alpha)
+                # Draw glow behind text
+                p.setPen(QPen(glow_color))
+                for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
+                    glow_rect = QRect(timer_rect.x() + dx, timer_rect.y() + dy,
+                                      timer_rect.width(), timer_rect.height())
+                    p.drawText(glow_rect, Qt.AlignHCenter, self.timer_text)
+
+            p.setPen(QPen(timer_color))
             p.drawText(timer_rect, Qt.AlignHCenter, self.timer_text)
             y += 32
 
