@@ -209,7 +209,7 @@ wheels = [
 
 [[package]]
 name = "pomo-pet"
-version = "1.2.23"
+version = "1.2.25"
 source = { editable = "." }
 dependencies = [
     { name = "click" },
