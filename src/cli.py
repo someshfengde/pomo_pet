@@ -409,6 +409,21 @@ def apply_cmd(ctx, preset_name):
         click.echo(f"  Long break: {p['long_break']}min every {p['interval']} sessions")
 
 
+@cli.command("reset-config")
+def reset_config_cmd():
+    """Reset all settings to defaults.
+
+    \b
+    Example:
+      pomo-pet reset-config    # Reset all settings
+    """
+    cfg = Config()
+    cfg.save()
+    click.echo("Config reset to defaults.")
+    click.echo(f"  Work: {cfg.work_minutes}min | Break: {cfg.break_minutes}min")
+    click.echo(f"  Volume: {cfg.volume} | Sound: {'on' if cfg.sound_enabled else 'off'}")
+
+
 @cli.command()
 def update():
     """Update Pomo Pet to the latest version."""
