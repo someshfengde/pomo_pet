@@ -2,6 +2,46 @@
 
 All notable changes to Pomo Pet are documented here.
 
+## [1.4.0] — 2026-05-29
+
+### Fixed
+- **Always-on-top broken** — rewrote `_apply_floating_level` to use PyObjC AppKit directly (old `PyObjCObject_New` approach broke in PyObjC 12+)
+- **Pet hidden behind other windows** — now uses `NSStatusWindowLevel` (25) instead of `NSFloatingWindowLevel` (3), same level as status bar items and sticky note apps
+- **Hide/Show broken** — re-applies window flags and floating level after `show()` with multiple delayed calls
+- **Window disappears on Space switch** — `setCollectionBehavior_(CanJoinAllSpaces | Stationary)` ensures pet appears on all Spaces
+- **Window hides when app deactivates** — `setHidesOnDeactivate_(False)` + `setCanHide_(False)`
+
+### Added
+- **Window position persistence** — saves/restores position from `~/.pomo-pet/config.json`
+- **Move-to submenu** — right-click → Move to → Top Left / Top Right / Bottom Left / Bottom Right / Center
+- **Arrow key nudge** — arrow keys move window by 20px, auto-saved
+- **Pause indicator** — semi-transparent overlay with pause icon on pet sprite when paused
+- **Mini/compact mode** — 📐 Mini Mode toggle in context menu (60px timer-only display)
+- **Hide/Show toggle** — 🙈 Hide Pet / 👀 Show Pet in context menu
+- **Celebration glow** — golden glow effect on timer text when session completes
+- **Context menu timer status** — shows timer, phase, session count with emojis
+- **reset-config CLI command** — `pomo-pet reset-config` restores all defaults
+- **Tray integration in .app** — system tray icon with pause/reset/quit (was missing from .app entry point)
+- **Skip handler in .app** — on_skip callback now works in bundled app
+- **Long break notification in .app** — notify_long_break() now called
+- **Better tray icon** — clean green circle with gradient, dark glass-styled menu
+- **Single-click tray toggle** — click tray icon to pause/resume
+- **Better tray tooltip** — emoji indicators, phase display
+- **More motivational messages** — 8 work, 3 break, 3 long break new messages
+- **Time-of-day greetings** — morning ☀️, afternoon 💪, evening 🌆 (25% chance)
+- **Off-screen bounds check** — window position validation on restore
+- **6 new integration tests** — verifies native window level is actually 25
+- **7 new unit tests** — nudge, move-to, position persistence
+
+### Changed
+- Window level from `NSFloatingWindowLevel` (3) to `NSStatusWindowLevel` (25)
+- Periodic re-apply interval from 2 seconds to 1 second
+- Removed `Qt.Tool` flag (was causing macOS to treat window as utility panel)
+- README updated with all new features, controls, and keyboard shortcuts
+- install.sh updated with correct CLI usage and keyboard shortcut docs
+- IMPROVEMENTS.md updated with latest feature status
+- Version bumped to 1.4.0
+
 ## [1.3.0] — 2026-05-29
 
 ### Fixed

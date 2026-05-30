@@ -548,17 +548,17 @@
             <div class="feature-card animate d1">
                 <span class="feature-icon">🪟</span>
                 <h3>Always on Top</h3>
-                <p>Floats above your windows without stealing focus. Draggable, click-through, non-intrusive.</p>
+                <p>Floats above all windows like sticky notes. Uses NSStatusWindowLevel for reliable always-on-top across Spaces and app switches.</p>
             </div>
             <div class="feature-card animate d2">
                 <span class="feature-icon">⌨️</span>
                 <h3>Keyboard Shortcuts</h3>
-                <p>Cmd+Shift+P to pause, R to reset, Q to quit. Control everything without touching the mouse.</p>
+                <p>Cmd+Shift+P to pause, R to reset, Q to quit. Arrow keys nudge position. Control everything without touching the mouse.</p>
             </div>
             <div class="feature-card animate d3">
                 <span class="feature-icon">📊</span>
                 <h3>Session Stats</h3>
-                <p>Track your focus time, streaks, and daily sessions. See your progress over time.</p>
+                <p>Track your focus time, streaks, and daily sessions. Export as JSON or CSV. See your progress over time.</p>
             </div>
             <div class="feature-card animate">
                 <span class="feature-icon">🔔</span>
@@ -574,6 +574,21 @@
                 <span class="feature-icon">🌿</span>
                 <h3>Smart Long Breaks</h3>
                 <p>Every 4th session triggers a longer break so you can truly recharge. Configurable interval and duration.</p>
+            </div>
+            <div class="feature-card animate d3">
+                <span class="feature-icon">📐</span>
+                <h3>Mini Mode</h3>
+                <p>Compact timer-only display for minimal overlay. Toggle between full and mini mode from the context menu.</p>
+            </div>
+            <div class="feature-card animate">
+                <span class="feature-icon">📌</span>
+                <h3>Move to Positions</h3>
+                <p>Snap your pet to corners or center. Right-click → Move to. Position persists across sessions.</p>
+            </div>
+            <div class="feature-card animate d1">
+                <span class="feature-icon">✨</span>
+                <h3>Celebration Glow</h3>
+                <p>Golden glow effect when you complete a session. Visual reward for your focus.</p>
             </div>
         </div>
     </section>
@@ -662,12 +677,20 @@
                 <div class="control-key">⌘⇧Q</div>
             </div>
             <div class="control-item animate">
+                <div class="control-action">Nudge Position</div>
+                <div class="control-key">Arrow Keys</div>
+            </div>
+            <div class="control-item animate d1">
                 <div class="control-action">Pet Wave</div>
                 <div class="control-key">Hover</div>
             </div>
-            <div class="control-item animate d1">
+            <div class="control-item animate d2">
                 <div class="control-action">Quit</div>
                 <div class="control-key">Q / ESC</div>
+            </div>
+            <div class="control-item animate d3">
+                <div class="control-action">Move to Corner</div>
+                <div class="control-key">Right Click</div>
             </div>
         </div>
     </section>
@@ -681,7 +704,11 @@
                 <span class="cmd">pomo-pet</span> start cat &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="comment"># Launch specific pet</span><br>
                 <span class="cmd">pomo-pet</span> list &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="comment"># See available pets</span><br>
                 <span class="cmd">pomo-pet</span> stats &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="comment"># View statistics</span><br>
+                <span class="cmd">pomo-pet</span> stats <span class="flag">--format json</span> <span class="comment"># Export as JSON</span><br>
+                <span class="cmd">pomo-pet</span> presets &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="comment"># List technique presets</span><br>
+                <span class="cmd">pomo-pet</span> apply classic &nbsp;&nbsp;&nbsp;<span class="comment"># Apply 25/5 preset</span><br>
                 <span class="cmd">pomo-pet</span> config &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="comment"># View settings</span><br>
+                <span class="cmd">pomo-pet</span> reset-config &nbsp;&nbsp;&nbsp;<span class="comment"># Reset to defaults</span><br>
                 <span class="cmd">pomo-pet</span> update &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="comment"># Self-update</span><br>
                 <span class="cmd">pomo-pet</span> <span class="flag">--version</span> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="comment"># Show version</span><br>
                 <br>
