@@ -91,7 +91,6 @@ class PetWindow(QMainWindow):
         self.setWindowFlags(
             Qt.FramelessWindowHint
             | Qt.WindowStaysOnTopHint
-            | Qt.Tool
         )
         self.setWindowTitle(self.pet.display_name)
         self.setAttribute(Qt.WA_TranslucentBackground)
@@ -151,11 +150,15 @@ class PetWindow(QMainWindow):
             if ns_window is None:
                 return
 
-            # Use NSFloatingWindowLevel (3) — stays above normal windows
-            # but below system UI.  Re-applied periodically so macOS cannot
-            # silently drop the level after focus changes or Space switches.
-            ns_window.setLevel_(_AppKit.NSFloatingWindowLevel)
+            # Use NSStatusWindowLevel (25) — same level as status bar items
+            # and sticky note apps.  This stays above ALL normal and floating
+            # windows.  Re-applied periodically so macOS cannot silently drop
+            # the level after focus changes or Space switches.
+            # NSStatusWindowLevel = 25 (from AppKit)
+            ns_window.setLevel_(25)
             ns_window.setHidesOnDeactivate_(False)
+            # Also prevent the window from being hidden when the app deactivates
+            ns_window.setCanHide_(False)
 
             # Make the window appear on ALL Spaces/Desktops so it never
             # disappears when the user switches to a different Space.
@@ -183,9 +186,11 @@ class PetWindow(QMainWindow):
         # Qt.ApplicationActive = 4, Qt.ApplicationInactive = 2
         # Re-apply in both cases to be safe — the call is cheap.
         QTimer.singleShot(0, self._apply_floating_level)
-        # Also re-apply after a short delay to catch race conditions
+        # Also re-apply after delays to catch race conditions
         # where macOS re-orders windows after the state change completes.
+        QTimer.singleShot(100, self._apply_floating_level)
         QTimer.singleShot(300, self._apply_floating_level)
+        QTimer.singleShot(500, self._apply_floating_level)
 
     def _save_position(self) -> None:
         """Save current window position to persistent config."""
@@ -366,15 +371,18 @@ class PetWindow(QMainWindow):
         self._on_reset = on_reset
         self._on_skip = on_skip
         self.show()
+
         # Apply native floating level AFTER show() — winId() is valid now
-        # Use a timer to ensure the native window is fully created
+        # Multiple delayed calls to handle different macOS timing scenarios
         QTimer.singleShot(0, self._apply_floating_level)
+        QTimer.singleShot(100, self._apply_floating_level)
+        QTimer.singleShot(500, self._apply_floating_level)
 
         # Periodically re-apply the floating level so macOS cannot silently
         # drop it after focus changes, Space switches, or fullscreen exits.
         self._float_timer = QTimer(self)
         self._float_timer.timeout.connect(self._apply_floating_level)
-        self._float_timer.start(2000)  # every 2 seconds
+        self._float_timer.start(1000)  # every 1 second for reliability
 
         # Re-apply immediately when the application state changes (e.g. user
         # switches to another app and back).
@@ -502,7 +510,19 @@ class PetWindow(QMainWindow):
             self.hide()
         else:
             self.show()
+            # Re-apply window flags and floating level after show
+            self.setWindowFlags(
+                Qt.FramelessWindowHint
+                | Qt.WindowStaysOnTopHint
+            )
+            self.setAttribute(Qt.WA_TranslucentBackground)
+            self.setAttribute(Qt.WA_NoSystemBackground)
+            self.setAttribute(Qt.WA_ShowWithoutActivating)
+            self.show()
+            # Multiple delayed re-applies to ensure it sticks
             QTimer.singleShot(0, self._apply_floating_level)
+            QTimer.singleShot(100, self._apply_floating_level)
+            QTimer.singleShot(500, self._apply_floating_level)
 
     def _toggle_mini_mode(self) -> None:
         """Toggle between full and mini (compact) display mode."""
