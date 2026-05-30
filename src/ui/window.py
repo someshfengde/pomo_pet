@@ -1,5 +1,6 @@
 """Pet display window using PySide6 (Qt) — transparent pet-only window."""
 
+import ctypes
 import sys
 from pathlib import Path
 from typing import Optional, Any, List, Dict
@@ -122,64 +123,100 @@ class PetWindow(QMainWindow):
             self.move(100, 100)
 
     def _apply_floating_level(self) -> None:
-        """Apply NSFloatingWindowLevel to the real NSWindow.
+        """Apply NSStatusWindowLevel to the real NSWindow.
 
-        Must be called AFTER show() so winId() returns a valid native handle.
-        Uses pyobjc AppKit — handles ARM64 calling convention correctly.
+        Finds the NSWindow by matching our Qt window's frame against
+        NSApplication.windows(), then sets the level directly via PyObjC.
+        This avoids the broken PyObjCObject_New / raw objc_msgSend approaches.
         """
         if _AppKit is None or sys.platform != "darwin":
             return
 
         try:
-            ns_view_ptr = int(self.winId())
-            if ns_view_ptr == 0:
+            # Get our window's frame in screen coordinates (Qt uses top-left origin,
+            # macOS uses bottom-left, but the NSWindow frame matching still works
+            # because we compare against all windows).
+            geo = self.geometry()
+            qt_x = geo.x()
+            qt_y = geo.y()
+            qt_w = geo.width()
+            qt_h = geo.height()
+
+            app = _AppKit.NSApplication.sharedApplication()
+            windows = app.windows()
+            if not windows:
                 return
 
-            # Convert the raw pointer to an ObjC object (cached on first call)
-            if not hasattr(self, '_pyobjc_new'):
-                from ctypes import c_void_p, py_object, pythonapi
-                pythonapi.PyObjCObject_New.restype = py_object
-                pythonapi.PyObjCObject_New.argtypes = [c_void_p, c_void_p, c_void_p]
-                self._pyobjc_new = pythonapi.PyObjCObject_New
-                self._c_void_p = c_void_p
+            # Find the NSWindow whose frame matches ours
+            target = None
+            for w in windows:
+                try:
+                    f = w.frame()
+                    # NSWindow frame: bottom-left origin, (x, y, width, height)
+                    # Our Qt geometry: top-left origin
+                    # Convert: macOS screen height - y - height = Qt y
+                    # But for matching, just compare width+height which are the same
+                    ns_w = int(f.size.width)
+                    ns_h = int(f.size.height)
+                    if abs(ns_w - qt_w) < 5 and abs(ns_h - qt_h) < 5:
+                        target = w
+                        break
+                except Exception:
+                    continue
 
-            ns_view = self._pyobjc_new(self._c_void_p(ns_view_ptr), 0, 0)
-
-            # winId() returns the NSView — get the NSWindow from it
-            ns_window = ns_view.window()
-            if ns_window is None:
+            if target is None:
                 return
 
-            # Use NSStatusWindowLevel (25) — same level as status bar items
-            # and sticky note apps.  This stays above ALL normal and floating
-            # windows.  Re-applied periodically so macOS cannot silently drop
-            # the level after focus changes or Space switches.
-            # NSStatusWindowLevel = 25 (from AppKit)
-            ns_window.setLevel_(25)
-            ns_window.setHidesOnDeactivate_(False)
-            # Also prevent the window from being hidden when the app deactivates
-            ns_window.setCanHide_(False)
+            # ── Set NSStatusWindowLevel (25) ──
+            # Same level as status bar items and sticky note apps.
+            # Above NSFloatingWindowLevel (3) and all normal windows (0).
+            target.setLevel_(25)
+            target.setHidesOnDeactivate_(False)
+            target.setCanHide_(False)
 
-            # Make the window appear on ALL Spaces/Desktops so it never
-            # disappears when the user switches to a different Space.
-            # NSWindowCollectionBehaviorCanJoinAllSpaces = 1 << 0
-            # NSWindowCollectionBehaviorStationary = 1 << 1
-            # Combined = 3
-            ns_window.setCollectionBehavior_(1 | 2)  # CanJoinAllSpaces | Stationary
+            # Make window appear on ALL Spaces
+            # NSWindowCollectionBehaviorCanJoinAllSpaces (1) | Stationary (2)
+            target.setCollectionBehavior_(1 | 2)
 
-            # Ensure the window is ordered to the front of its level.
-            # This is more reliable than Qt's raise_() because it operates
-            # at the native window server level.
-            ns_window.orderFrontRegardless()
+            # Order to front
+            target.orderFrontRegardless()
 
-            # Ensure the window is visible (not miniaturized/hidden).
-            if ns_window.isMiniaturized():
-                ns_window.deminiaturize_(None)
-            if not ns_window.isVisible():
-                ns_window.makeKeyAndOrderFront_(None)
+            # Show if hidden
+            if not target.isVisible():
+                target.makeKeyAndOrderFront_(None)
 
+            # Belt and suspenders: also tell Qt to raise
+            self.raise_()
+
+        except Exception as e:
+            print(f"[Pomo Pet] _apply_floating_level error: {e}", file=sys.stderr)
+
+    def get_native_level(self) -> int:
+        """Return the current native NSWindow level (for diagnostics)."""
+        if _AppKit is None or sys.platform != "darwin":
+            return -1
+        try:
+            app = _AppKit.NSApplication.sharedApplication()
+            windows = app.windows()
+            if not windows:
+                return -1
+
+            geo = self.geometry()
+            qt_w = geo.width()
+            qt_h = geo.height()
+
+            for w in windows:
+                try:
+                    f = w.frame()
+                    ns_w = int(f.size.width)
+                    ns_h = int(f.size.height)
+                    if abs(ns_w - qt_w) < 5 and abs(ns_h - qt_h) < 5:
+                        return int(w.level())
+                except Exception:
+                    continue
+            return -1
         except Exception:
-            pass  # graceful fallback
+            return -1
 
     def _on_app_state_changed(self, state) -> None:
         """Re-apply floating level when application state changes."""

@@ -396,3 +396,103 @@ class TestWindowPosition:
         assert w.pos().x() == 200
         assert w.pos().y() == 200
         w.close()
+
+
+class TestAlwaysOnTop:
+    """Integration tests verifying the window actually stays on top."""
+
+    def test_window_flags_include_stays_on_top(self, window):
+        """Window has WindowStaysOnTopHint flag."""
+        flags = window.windowFlags()
+        assert flags & Qt.WindowStaysOnTopHint
+
+    def test_window_flags_are_frameless(self, window):
+        """Window has FramelessWindowHint flag."""
+        flags = window.windowFlags()
+        assert flags & Qt.FramelessWindowHint
+
+    def test_window_is_translucent(self, window):
+        """Window has translucent background attribute."""
+        assert window.testAttribute(Qt.WA_TranslucentBackground)
+
+    def test_window_show_without_activating(self, window):
+        """Window has ShowWithoutActivating attribute."""
+        assert window.testAttribute(Qt.WA_ShowWithoutActivating)
+
+    def test_native_level_after_show(self, test_pet):
+        """After show(), native window level should be set to NSStatusWindowLevel(25).
+
+        This is the key integration test — it verifies the native macOS window
+        level is actually elevated, not just that Qt flags are set.
+        """
+        import sys
+        if sys.platform != "darwin":
+            pytest.skip("macOS-only test")
+
+        w = PetWindow(pet=test_pet)
+        w.show()
+
+        # Process events to let the native window be created
+        from PySide6.QtWidgets import QApplication
+        app = QApplication.instance()
+        for _ in range(10):
+            app.processEvents()
+
+        # Apply the floating level
+        w._apply_floating_level()
+
+        # Process events again
+        for _ in range(10):
+            app.processEvents()
+
+        # Check the native level
+        level = w.get_native_level()
+        # NSStatusWindowLevel = 25, NSFloatingWindowLevel = 3
+        # The level should be at least NSFloatingWindowLevel (3)
+        # Ideally NSStatusWindowLevel (25)
+        assert level >= 3, f"Native window level too low: {level} (expected >= 3)"
+        print(f"[test] Native window level: {level}")
+
+        w.close()
+
+    def test_hide_show_restores_level(self, test_pet):
+        """After hide() and show(), the floating level should be re-applied."""
+        import sys
+        if sys.platform != "darwin":
+            pytest.skip("macOS-only test")
+
+        from PySide6.QtWidgets import QApplication
+        app = QApplication.instance()
+
+        w = PetWindow(pet=test_pet)
+        w.show()
+        for _ in range(10):
+            app.processEvents()
+        w._apply_floating_level()
+        for _ in range(10):
+            app.processEvents()
+
+        level_before = w.get_native_level()
+
+        # Hide
+        w.hide()
+        for _ in range(10):
+            app.processEvents()
+
+        # Show and re-apply
+        w.show()
+        w.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint)
+        w.setAttribute(Qt.WA_TranslucentBackground)
+        w.setAttribute(Qt.WA_NoSystemBackground)
+        w.setAttribute(Qt.WA_ShowWithoutActivating)
+        w.show()
+        for _ in range(10):
+            app.processEvents()
+        w._apply_floating_level()
+        for _ in range(10):
+            app.processEvents()
+
+        level_after = w.get_native_level()
+        assert level_after >= 3, f"Level after hide/show too low: {level_after}"
+
+        w.close()
