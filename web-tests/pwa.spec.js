@@ -275,7 +275,7 @@ test("exposes installable PWA metadata and service worker", async ({ page, conte
 
   const manifest = await page.locator('link[rel="manifest"]').getAttribute("href");
   expect(manifest).toBe("./manifest.webmanifest");
-  await expect(page.locator('script[src="./app.js?v=18"]')).toHaveCount(1);
+  await expect(page.locator('script[src="./app.js?v=19"]')).toHaveCount(1);
 
   const registrationScope = await page.evaluate(async () => {
     const registration = await navigator.serviceWorker.ready;

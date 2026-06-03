@@ -102,7 +102,7 @@ const MESSAGES = {
     "One clear task. One calm session.",
     "Stay with it. Your pet is focusing too.",
     "Small minutes become big work.",
-    "Protect this block like it matters.",
+    "Keep the next step simple.",
   ],
   break: [
     "Look away from the screen for a bit.",
