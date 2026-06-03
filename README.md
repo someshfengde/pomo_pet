@@ -4,7 +4,7 @@
 
 [![Python 3.13+](https://img.shields.io/badge/python-3.13+-blue.svg?logo=python&logoColor=white)](https://python.org)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-159%20passed-brightgreen.svg)](#testing)
+[![Tests](https://img.shields.io/badge/tests-171%20passed-brightgreen.svg)](#testing)
 
 ## Quick Start
 
@@ -68,6 +68,7 @@ pomo-pet config volume 50
 
 - **Always on top** — pet stays visible above all other windows (7-layer reliability)
 - **Animated desktop pet** — floating transparent window with 9 animation states
+- **Installable web app** — PWA version in `docs/` with offline support and local stats
 - **Pomodoro timer** — work / break / long break with progress bar
 - **Smart long breaks** — every 4th session triggers a 15-minute rest (configurable)
 - **Pet reactions** — animations change based on timer state, hover, dragging
@@ -124,11 +125,41 @@ Browse [Petdex](https://petdex.dev/) for spritesheet-compatible pets.
 
 ```bash
 make install    # Install dependencies
-make test       # Run tests (159 passing)
+make test       # Run tests (171 passing)
 make test-all   # Run with coverage
 make run        # Launch with avocado
 make app        # Build macOS .app bundle
 make app-dmg    # Build DMG for distribution
+```
+
+## Web App / PWA
+
+The browser version lives in `docs/` so it can deploy directly to GitHub Pages.
+
+```bash
+python3 -m http.server 4173 --directory docs
+# Open http://127.0.0.1:4173
+```
+
+It includes an animated pet, work/break/long-break timer, local-first stats,
+notifications, installable PWA metadata, and a service worker for offline use.
+The web app also includes a pet gallery entry point, custom spritesheet URL
+support, bundled pet color variants, weekly focus chart, pet bond leveling,
+daily focus goals, local insight cards, restorative break prompts, session reflections, and JSON stats export. Sessions can also carry a focus intention, and local achievements
+unlock from focus milestones. JSON imports restore exported stats, and the share
+action copies or shares a short focus summary with daily energy without sending data to a server.
+First-run setup helps pick a preset and intention, while readiness indicators
+show install, offline, and local storage status. Launch metadata includes social
+preview tags, a generated preview image, install screenshots, and structured data for share-friendly public pages. The browser
+title follows the active timer, and an optional keep-awake setting can request a
+screen wake lock during running sessions.
+
+Web checks are covered by:
+
+```bash
+pytest tests/test_web_pwa.py
+python scripts/audit_pwa.py
+npm run test:web
 ```
 
 **Project structure:**
@@ -150,6 +181,15 @@ src/
     ├── sounds.py       # Sound effects (macOS afplay)
     ├── notifications.py # macOS native notifications
     └── tray.py         # System tray integration
+docs/
+├── index.html          # Static PWA app shell
+├── app.js              # Browser timer, pet gallery, stats, notifications
+├── styles.css          # Responsive web UI
+├── assets/preview.png  # Social/install preview image
+├── manifest.webmanifest
+└── sw.js               # Offline service worker
+scripts/
+└── audit_pwa.py        # Static PWA launch/installability and repo-safety audit
 ```
 
 ## License

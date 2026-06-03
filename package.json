@@ -1,0 +1,11 @@
+{
+  "name": "pomo-pet-web-checks",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test:web": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.52.0"
+  }
+}

@@ -157,6 +157,24 @@ A prioritized list of improvements to make Pomo Pet a truly delightful, Apple-qu
 
 ## 🔵 P3 — Future Vision
 
+### 20a. Web app / PWA
+- **IN PROGRESS** — Static PWA in `docs/`
+- Includes animated avocado pet, work/break/long-break timer, local-first stats, notification permission flow, install manifest, service worker, offline app shell, and mobile-first layout
+- **Enhanced:** Pet gallery panel with safe external discovery link to Codex Pets, custom spritesheet URL support, weekly focus chart, all-time focus metric, and JSON stats export
+- **Enhanced:** Bundled Avocado, Mint, Blueberry, and Sunrise pet variants using the existing safe spritesheet asset
+- **Enhanced:** Pet bond system with XP, levels, mood, daily focus goal, and goal progress ring
+- **Enhanced:** Local insight cards for best recent day, average energy, and week-over-week momentum
+- **Enhanced:** Focus intention input, quick intention chips, session history task labels, and local milestone achievements
+- **Enhanced:** Restorative break prompts that rotate manually or when a work session completes
+- **Enhanced:** Post-session reflection capture with local notes, energy rating, history display, import/export support, and share summary energy
+- **Enhanced:** Local JSON stats import, JSON export, and share/copy focus summary
+- **Enhanced:** First-run setup overlay and PWA readiness indicators for install, offline, and storage status
+- **Enhanced:** Launch/share metadata, canonical tags, social preview tags, and SoftwareApplication structured data
+- **Enhanced:** Generated 1200x630 launch preview image wired into Open Graph, Twitter cards, and manifest screenshots
+- **Enhanced:** Browser title timer sync and optional screen wake-lock support while sessions run
+- **Testing:** pytest PWA file checks, static PWA/repo-safety audit, and Playwright E2E workflow in GitHub Actions
+- **Next:** multi-pet bundles, richer stats charts, generated preview images, and Product Hunt polish pass
+
 ### 21. Team mode
 - Shared timer across team members
 - See who's focusing, who's on break
