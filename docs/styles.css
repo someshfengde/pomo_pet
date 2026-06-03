@@ -169,51 +169,24 @@ h2 {
   aspect-ratio: 1;
   display: grid;
   place-items: center;
+  overflow: visible;
 }
 
 .pet-sprite {
-  width: 192px;
-  height: 192px;
+  width: var(--pet-frame-width, 192px);
+  height: var(--pet-frame-height, 208px);
   transform: scale(1.55);
   transform-origin: center;
   background-image: url("./assets/pets/avacado/spritesheet.webp");
   background-repeat: no-repeat;
-  background-size: 1536px auto;
+  background-size: var(--pet-sheet-width, 1536px) auto;
   image-rendering: pixelated;
-  animation: pet-idle 0.72s steps(6) infinite;
+  animation: pet-frames var(--pet-duration, 0.75s) steps(var(--pet-frames, 6)) infinite;
 }
 
-.pet-sprite.is-running {
-  animation: pet-running 0.58s steps(6) infinite;
-}
-
-.pet-sprite.is-break {
-  animation: pet-waving 0.82s steps(4) infinite;
-}
-
-.pet-sprite.is-paused {
-  animation: pet-waiting 1s steps(6) infinite;
-  filter: saturate(0.7);
-}
-
-@keyframes pet-idle {
-  from { background-position: 0 0; }
-  to { background-position: -1152px 0; }
-}
-
-@keyframes pet-running {
-  from { background-position: 0 -1344px; }
-  to { background-position: -1152px -1344px; }
-}
-
-@keyframes pet-waving {
-  from { background-position: 0 -576px; }
-  to { background-position: -768px -576px; }
-}
-
-@keyframes pet-waiting {
-  from { background-position: 0 -1152px; }
-  to { background-position: -1152px -1152px; }
+@keyframes pet-frames {
+  from { background-position: 0 var(--pet-row-offset, 0); }
+  to { background-position: var(--pet-end-offset, -1152px) var(--pet-row-offset, 0); }
 }
 
 .timer-card {
@@ -354,7 +327,7 @@ h2 {
 
 .pet-choice-preview {
   width: 48px;
-  height: 48px;
+  height: 52px;
   background-repeat: no-repeat;
   background-position: 0 0;
   background-size: 384px auto;

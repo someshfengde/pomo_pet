@@ -35,30 +35,46 @@ const PRESETS = {
   deep: { label: "Deep", work: 90, break: 20, longBreak: 20, interval: 0 },
 };
 
+const DEFAULT_PET_META = {
+  frameWidth: 192,
+  frameHeight: 208,
+  sheetWidth: 1536,
+  animations: {
+    idle: { row: 0, frames: 6, fps: 8 },
+    waving: { row: 3, frames: 4, fps: 8 },
+    waiting: { row: 6, frames: 6, fps: 6 },
+    running: { row: 7, frames: 6, fps: 10 },
+  },
+};
+
 const PETS = {
   avocado: {
     label: "Avocado",
     description: "The original calm focus buddy.",
     sprite: "./assets/pets/avacado/spritesheet.webp",
     filter: "none",
+    meta: DEFAULT_PET_META,
   },
   mint: {
     label: "Mint",
     description: "Cool, crisp, and steady.",
     sprite: "./assets/pets/avacado/spritesheet.webp",
     filter: "hue-rotate(58deg) saturate(1.2)",
+    meta: DEFAULT_PET_META,
   },
   blueberry: {
     label: "Blueberry",
     description: "A calm companion for deep work.",
     sprite: "./assets/pets/avacado/spritesheet.webp",
     filter: "hue-rotate(168deg) saturate(1.18)",
+    meta: DEFAULT_PET_META,
   },
   sunrise: {
     label: "Sunrise",
     description: "Warm energy for starting strong.",
     sprite: "./assets/pets/avacado/spritesheet.webp",
     filter: "hue-rotate(318deg) saturate(1.25) brightness(1.08)",
+    meta: DEFAULT_PET_META,
   },
 };
 
@@ -107,11 +123,13 @@ let wakeLock = null;
 let wakeLockRequest = null;
 let reviewSessionId = null;
 let reviewEnergy = 0;
+let customPetResolveTimer = 0;
 
 const els = {
   petSprite: document.querySelector("#petSprite"),
   petGallery: document.querySelector("#petGallery"),
   customPetInput: document.querySelector("#customPetInput"),
+  customPetStatus: document.querySelector("#customPetStatus"),
   timerText: document.querySelector("#timerText"),
   phaseLabel: document.querySelector("#phaseLabel"),
   sessionLabel: document.querySelector("#sessionLabel"),
@@ -189,6 +207,9 @@ function defaultState() {
       wakeLock: false,
       pet: "avocado",
       customPetUrl: "",
+      customPetSourceUrl: "",
+      customPetLabel: "",
+      customPetMeta: null,
       dailyGoalMinutes: 120,
       currentIntention: "",
       breakPromptIndex: 0,
@@ -335,7 +356,6 @@ function renderPetGallery() {
     const button = document.createElement("button");
     button.type = "button";
     button.className = "pet-choice";
-    button.setAttribute("role", "listitem");
     button.setAttribute("aria-pressed", String(state.settings.pet === id && !state.settings.customPetUrl));
     button.innerHTML = `
       <span class="pet-choice-preview" style="background-image: url('${pet.sprite}'); filter: ${pet.filter}"></span>
@@ -347,6 +367,9 @@ function renderPetGallery() {
     button.addEventListener("click", () => {
       state.settings.pet = id;
       state.settings.customPetUrl = "";
+      state.settings.customPetSourceUrl = "";
+      state.settings.customPetLabel = "";
+      state.settings.customPetMeta = null;
       saveState();
       render();
     });
@@ -383,7 +406,9 @@ function render() {
   const bond = computeBond(allFocus, todayFocus);
   const streak = computeStreak();
   const pet = currentPet();
-  const sprite = state.settings.customPetUrl || pet.sprite;
+  const customSprite = isRenderableSpriteUrl(state.settings.customPetUrl) ? state.settings.customPetUrl : "";
+  const sprite = customSprite || pet.sprite;
+  const petMeta = customSprite ? state.settings.customPetMeta || DEFAULT_PET_META : pet.meta || DEFAULT_PET_META;
 
   els.timerText.textContent = formatTime(state.timer.remaining);
   els.phaseLabel.textContent = phaseName();
@@ -413,16 +438,17 @@ function render() {
   els.notificationToggle.checked = state.settings.notifications;
   els.tickToggle.checked = state.settings.tick;
   els.wakeLockToggle.checked = state.settings.wakeLock;
-  els.customPetInput.value = state.settings.customPetUrl;
+  els.customPetInput.value = state.settings.customPetSourceUrl || state.settings.customPetUrl;
+  els.customPetStatus.textContent = customPetStatusText(customSprite);
   els.offlineStatus.textContent = navigator.onLine ? "online" : "offline-ready";
   updateDocumentTitle();
   syncWakeLock();
   renderReadiness();
 
   els.petSprite.className = "pet-sprite";
-  els.petSprite.style.backgroundImage = `url("${sprite}")`;
-  els.petSprite.style.filter = state.settings.customPetUrl ? "none" : pet.filter;
-  els.petSprite.setAttribute("aria-label", `Animated ${state.settings.customPetUrl ? "custom" : pet.label.toLowerCase()} pet`);
+  els.petSprite.style.filter = customSprite ? "none" : pet.filter;
+  els.petSprite.setAttribute("aria-label", `Animated ${customSprite ? "custom" : pet.label.toLowerCase()} pet`);
+  applyPetSprite(petMeta, sprite);
   if (!state.timer.running) els.petSprite.classList.add("is-paused");
   else if (state.timer.phase === "work") els.petSprite.classList.add("is-running");
   else els.petSprite.classList.add("is-break");
@@ -437,6 +463,43 @@ function render() {
   renderAchievements({ allFocus, todayFocus, bond });
   renderOnboarding();
   renderSessionReview();
+}
+
+function applyPetSprite(meta, spriteUrl) {
+  const animationName = spriteAnimationName();
+  const baseAnimation = meta.animations[animationName] || meta.animations.idle || DEFAULT_PET_META.animations.idle;
+  const animation = state.timer.running ? baseAnimation : { ...baseAnimation, row: 0, frames: 1, fps: 1 };
+  const frameWidth = meta.frameWidth || DEFAULT_PET_META.frameWidth;
+  const frameHeight = meta.frameHeight || DEFAULT_PET_META.frameHeight;
+  const frames = Math.max(1, Number(animation.frames) || 1);
+  const fps = Math.max(1, Number(animation.fps) || 8);
+  const row = Math.max(0, Number(animation.row) || 0);
+  const sheetWidth = meta.sheetWidth || frameWidth * maxAnimationFrames(meta);
+
+  els.petSprite.style.backgroundImage = `url("${spriteUrl}")`;
+  els.petSprite.style.setProperty("--pet-frame-width", `${frameWidth}px`);
+  els.petSprite.style.setProperty("--pet-frame-height", `${frameHeight}px`);
+  els.petSprite.style.setProperty("--pet-sheet-width", `${sheetWidth}px`);
+  els.petSprite.style.setProperty("--pet-row-offset", `${-(row * frameHeight)}px`);
+  els.petSprite.style.setProperty("--pet-end-offset", `${-(frames * frameWidth)}px`);
+  els.petSprite.style.setProperty("--pet-frames", frames);
+  els.petSprite.style.setProperty("--pet-duration", `${frames / fps}s`);
+}
+
+function customPetStatusText(customSprite) {
+  if (customSprite && state.settings.customPetSourceUrl) return `Loaded ${state.settings.customPetLabel || "Codex Pets share link"}.`;
+  if (customSprite) return "Using direct spritesheet.";
+  if (state.settings.customPetUrl || state.settings.customPetSourceUrl) return "Paste a direct spritesheet or Codex Pets share link.";
+  return "";
+}
+
+function spriteAnimationName() {
+  if (!state.timer.running) return "idle";
+  return state.timer.phase === "work" ? "running" : "waving";
+}
+
+function maxAnimationFrames(meta) {
+  return Math.max(...Object.values(meta.animations || DEFAULT_PET_META.animations).map((animation) => Number(animation.frames) || 1), 1);
 }
 
 function renderReadiness() {
@@ -679,7 +742,7 @@ function recordSession() {
     date: todayKey(),
     time: new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit" }).format(now),
     preset: state.settings.preset,
-    pet: state.settings.customPetUrl ? "custom" : currentPet().label,
+    pet: isDirectSpritesheetUrl(state.settings.customPetUrl) ? "custom" : currentPet().label,
     intention: state.settings.currentIntention,
     reflection: "",
     energy: 0,
@@ -796,6 +859,11 @@ function sanitizeImportedSettings(settings) {
   if (typeof settings.preset === "string" && PRESETS[settings.preset]) allowed.preset = settings.preset;
   if (typeof settings.pet === "string" && PETS[settings.pet]) allowed.pet = settings.pet;
   if (typeof settings.customPetUrl === "string") allowed.customPetUrl = settings.customPetUrl;
+  if (typeof settings.customPetSourceUrl === "string") allowed.customPetSourceUrl = settings.customPetSourceUrl;
+  if (typeof settings.customPetLabel === "string") allowed.customPetLabel = settings.customPetLabel.slice(0, 80);
+  if (settings.customPetMeta && typeof settings.customPetMeta === "object") {
+    allowed.customPetMeta = normalizePetMeta(settings.customPetMeta);
+  }
   if (typeof settings.currentIntention === "string") allowed.currentIntention = settings.currentIntention.slice(0, 80);
   if (Number.isFinite(Number(settings.breakPromptIndex))) {
     allowed.breakPromptIndex = normalizeBreakPromptIndex(settings.breakPromptIndex);
@@ -949,9 +1017,7 @@ function bindEvents() {
   bindNumberInput(els.intervalInput, "interval", 0, 12);
   bindNumberInput(els.dailyGoalInput, "dailyGoalMinutes", 15, 720);
   els.customPetInput.addEventListener("input", () => {
-    state.settings.customPetUrl = els.customPetInput.value.trim();
-    saveState();
-    render();
+    scheduleCustomPetResolve();
   });
   els.tickToggle.addEventListener("change", () => updateSetting("tick", els.tickToggle.checked));
   els.wakeLockToggle.addEventListener("change", () => updateSetting("wakeLock", els.wakeLockToggle.checked));
@@ -992,6 +1058,153 @@ function bindEvents() {
     els.installButton.hidden = false;
     renderReadiness();
   });
+}
+
+function scheduleCustomPetResolve() {
+  const value = els.customPetInput.value.trim();
+  window.clearTimeout(customPetResolveTimer);
+  if (!value || isDirectSpritesheetUrl(value)) {
+    setDirectCustomPet(value);
+    return;
+  }
+  els.customPetStatus.textContent = "Resolving pet link...";
+  customPetResolveTimer = window.setTimeout(() => resolveCustomPetInput(value), 450);
+}
+
+function setDirectCustomPet(url) {
+  state.settings.customPetUrl = url;
+  state.settings.customPetSourceUrl = "";
+  state.settings.customPetLabel = "";
+  state.settings.customPetMeta = null;
+  els.customPetStatus.textContent = url ? "Using direct spritesheet." : "";
+  saveState();
+  render();
+}
+
+async function resolveCustomPetInput(value) {
+  try {
+    if (!isCodexPetsUrl(value)) {
+      if (isDirectSpritesheetUrl(value)) setDirectCustomPet(value);
+      else els.customPetStatus.textContent = "Use a direct spritesheet or Codex Pets share link.";
+      return;
+    }
+    const fallback = fallbackCodexPetFromUrl(value);
+    applyResolvedCustomPet(value, fallback);
+    if (typeof window.fetch === "function") {
+      try {
+        applyResolvedCustomPet(value, await resolveCodexPetShare(value));
+      } catch {
+        // The browser can still render the fallback spritesheet URL even when API CORS is unavailable.
+      }
+    }
+  } catch (error) {
+    els.customPetStatus.textContent = `Could not load that Codex Pets link: ${error.message}`;
+  }
+}
+
+function applyResolvedCustomPet(sourceUrl, resolved) {
+  state.settings.customPetUrl = resolved.sprite;
+  state.settings.customPetSourceUrl = sourceUrl;
+  state.settings.customPetLabel = resolved.label;
+  state.settings.customPetMeta = resolved.meta;
+  els.customPetStatus.textContent = `Loaded ${resolved.label}.`;
+  saveState();
+  render();
+}
+
+function isDirectSpritesheetUrl(value) {
+  return /\.(webp|png|gif)(\?.*)?$/i.test(value);
+}
+
+function isRenderableSpriteUrl(value) {
+  return isDirectSpritesheetUrl(value) || /^https:\/\/codex-pets\.net\/api\/pets\/[^/]+\/spritesheet(?:\?.*)?$/i.test(value);
+}
+
+function isCodexPetsUrl(value) {
+  try {
+    return new URL(value).hostname === "codex-pets.net";
+  } catch {
+    return false;
+  }
+}
+
+function fallbackCodexPetFromUrl(value) {
+  const slug = codexPetSlugFromUrl(value);
+  if (!slug) throw new Error("missing pet slug");
+  return {
+    sprite: `https://codex-pets.net/api/pets/${encodeURIComponent(slug)}/spritesheet`,
+    label: petLabelFromSlug(slug),
+    meta: DEFAULT_PET_META,
+  };
+}
+
+function codexPetSlugFromUrl(value) {
+  const url = new URL(value);
+  const shareMatch = url.pathname.match(/^\/share\/([^/?#]+)/);
+  if (shareMatch) return decodeURIComponent(shareMatch[1]);
+  const apiMatch = url.pathname.match(/^\/api\/pets\/([^/?#]+)/);
+  if (apiMatch) return decodeURIComponent(apiMatch[1]);
+  const hashMatch = url.hash.match(/^#\/pets\/([^/?#]+)/);
+  if (hashMatch) return decodeURIComponent(hashMatch[1]);
+  return "";
+}
+
+function petLabelFromSlug(slug) {
+  return slug
+    .split(/[-_]+/)
+    .filter(Boolean)
+    .map((part) => part[0]?.toUpperCase() + part.slice(1))
+    .join(" ") || "Codex pet";
+}
+
+async function resolveCodexPetShare(url) {
+  const slug = codexPetSlugFromUrl(url);
+  if (!slug) throw new Error("missing pet slug");
+  const response = await fetch(`https://codex-pets.net/api/pets/${encodeURIComponent(slug)}`, {
+    headers: { accept: "application/json" },
+  });
+  if (!response.ok) throw new Error("pet API unavailable");
+  const payload = await response.json();
+  const petMeta = payload.pet || payload;
+  return {
+    sprite: petMeta.spritesheetUrl || `https://codex-pets.net/api/pets/${encodeURIComponent(slug)}/spritesheet`,
+    label: petMeta.displayName || petMeta.id || "custom pet",
+    meta: normalizePetMeta(petMeta),
+  };
+}
+
+function normalizePetMeta(meta) {
+  const cellSize = parseSize(meta.validationReport?.cellSize);
+  const atlasSize = parseSize(meta.validationReport?.atlasSize);
+  const frameWidth = positiveNumber(meta.frameWidth ?? cellSize?.width, DEFAULT_PET_META.frameWidth);
+  const frameHeight = positiveNumber(meta.frameHeight ?? cellSize?.height, DEFAULT_PET_META.frameHeight);
+  const animations = {};
+  Object.entries(meta.animations || {}).forEach(([name, animation]) => {
+    animations[name] = {
+      row: positiveNumber(animation.row, 0),
+      frames: positiveNumber(animation.frames, 1, 1),
+      fps: positiveNumber(animation.fps, 8, 1),
+    };
+  });
+  return {
+    frameWidth,
+    frameHeight,
+    sheetWidth: positiveNumber(meta.sheetWidth ?? atlasSize?.width, frameWidth * Math.max(...Object.values(animations).map((animation) => animation.frames), 1), 1),
+    animations: Object.keys(animations).length ? animations : DEFAULT_PET_META.animations,
+  };
+}
+
+function parseSize(value) {
+  if (typeof value !== "string") return null;
+  const match = value.match(/^(\d+)x(\d+)$/i);
+  if (!match) return null;
+  return { width: Number(match[1]), height: Number(match[2]) };
+}
+
+function positiveNumber(value, fallback, minimum = 0) {
+  const number = Number(value);
+  if (!Number.isFinite(number) || number < minimum) return fallback;
+  return number;
 }
 
 function bindNumberInput(input, key, min, max) {

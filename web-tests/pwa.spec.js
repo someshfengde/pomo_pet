@@ -42,7 +42,7 @@ test("runs the timer and persists settings locally", async ({ page }) => {
   await page.locator("#intentionInput").fill("Ship the PWA");
   await expect(page.locator("#timerText")).toHaveText("01:00");
 
-  await page.getByRole("button", { name: "Start" }).click();
+  await page.locator("#startPauseButton").click();
   await expect(page.getByRole("button", { name: "Pause" })).toBeVisible();
   await expect(page).toHaveTitle(/Work - Pomo Pet/);
   await expect(page.locator("#timerText")).not.toHaveText("01:00", { timeout: 2500 });
@@ -67,12 +67,43 @@ test("supports custom pet spritesheets", async ({ page }) => {
   await expect(page.locator("#petGallery .pet-choice")).toHaveCount(4);
   await page.getByRole("button", { name: /Blueberry/ }).click();
   await expect(page.locator("#petSprite")).toHaveAttribute("aria-label", "Animated blueberry pet");
+  await expect(page.locator("#petSprite")).toHaveCSS("height", "208px");
+  await expect(page.locator("#petSprite")).toHaveCSS("background-size", "1536px");
+  expect(await page.locator("#petSprite").evaluate((element) => element.style.getPropertyValue("--pet-frames"))).toBe("1");
 
   await page.locator("#customPetInput").fill("https://example.com/pet.webp");
 
   await expect(page.locator("#petSprite")).toHaveAttribute("aria-label", "Animated custom pet");
   const backgroundImage = await page.locator("#petSprite").evaluate((element) => getComputedStyle(element).backgroundImage);
   expect(backgroundImage).toContain("https://example.com/pet.webp");
+});
+
+test("resolves Codex Pets share links", async ({ page, context }) => {
+  await context.route("**/api/pets/clipops", async (route) => {
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        pet: {
+          id: "clipops",
+          displayName: "ClipOps",
+          spritesheetUrl: "https://codex-pets.net/assets/pets/v/1780497804791/clipops/spritesheet.webp",
+          validationReport: {
+            atlasSize: "1536x1872",
+            cellSize: "192x208",
+          },
+        },
+      }),
+      headers: { "access-control-allow-origin": "*" },
+    });
+  });
+
+  await completeOnboarding(page);
+  await page.locator("#customPetInput").fill("https://codex-pets.net/share/clipops");
+
+  await expect(page.locator("#customPetStatus")).toHaveText("Loaded ClipOps.");
+  const backgroundImage = await page.locator("#petSprite").evaluate((element) => getComputedStyle(element).backgroundImage);
+  expect(backgroundImage).toContain("https://codex-pets.net/assets/pets/v/1780497804791/clipops/spritesheet.webp");
+  await expect(page.locator("#petSprite")).toHaveCSS("height", "208px");
 });
 
 test("captures post-session reflections locally", async ({ page }) => {
@@ -107,7 +138,7 @@ test("captures post-session reflections locally", async ({ page }) => {
 
   await page.goto("/");
   await expect(page.locator("#timerText")).toHaveText("00:01");
-  await page.getByRole("button", { name: "Start" }).click();
+  await page.locator("#startPauseButton").click();
   await expect(page.locator("#sessionReviewOverlay")).toBeVisible({ timeout: 3000 });
 
   await page.locator("#sessionReviewInput").fill("Finished the launch copy.");
@@ -127,7 +158,7 @@ test("exposes installable PWA metadata and service worker", async ({ page, conte
 
   const manifest = await page.locator('link[rel="manifest"]').getAttribute("href");
   expect(manifest).toBe("./manifest.webmanifest");
-  await expect(page.locator('script[src="./app.js?v=11"]')).toHaveCount(1);
+  await expect(page.locator('script[src="./app.js?v=14"]')).toHaveCount(1);
 
   const registrationScope = await page.evaluate(async () => {
     const registration = await navigator.serviceWorker.ready;
@@ -148,7 +179,7 @@ test("guides first-run setup", async ({ page }) => {
 
   await expect(page.locator("#onboardingOverlay")).toBeVisible();
   await page.locator("#onboardingIntentionInput").fill("Plan launch");
-  await page.getByRole("button", { name: "Sprint" }).click();
+  await page.getByLabel("Starting preset").getByRole("button", { name: "Sprint" }).click();
   await page.getByRole("button", { name: "Start setup" }).click();
 
   await expect(page.locator("#onboardingOverlay")).toBeHidden();

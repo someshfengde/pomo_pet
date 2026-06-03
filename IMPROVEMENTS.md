@@ -160,7 +160,8 @@ A prioritized list of improvements to make Pomo Pet a truly delightful, Apple-qu
 ### 20a. Web app / PWA
 - **IN PROGRESS** — Static PWA in `docs/`
 - Includes animated avocado pet, work/break/long-break timer, local-first stats, notification permission flow, install manifest, service worker, offline app shell, and mobile-first layout
-- **Enhanced:** Pet gallery panel with safe external discovery link to Codex Pets, custom spritesheet URL support, weekly focus chart, all-time focus metric, and JSON stats export
+- **Enhanced:** Pet gallery panel with safe external discovery link to Codex Pets, custom spritesheet URL support, Codex Pets share-link import, weekly focus chart, all-time focus metric, and JSON stats export
+- **Fixed:** Web sprite rendering now uses pet metadata frame dimensions instead of hardcoded row offsets
 - **Enhanced:** Bundled Avocado, Mint, Blueberry, and Sunrise pet variants using the existing safe spritesheet asset
 - **Enhanced:** Pet bond system with XP, levels, mood, daily focus goal, and goal progress ring
 - **Enhanced:** Local insight cards for best recent day, average energy, and week-over-week momentum

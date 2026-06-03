@@ -144,7 +144,7 @@ python3 -m http.server 4173 --directory docs
 It includes an animated pet, work/break/long-break timer, local-first stats,
 notifications, installable PWA metadata, and a service worker for offline use.
 The web app also includes a pet gallery entry point, custom spritesheet URL
-support, bundled pet color variants, weekly focus chart, pet bond leveling,
+support, Codex Pets share-link import, bundled pet color variants, weekly focus chart, pet bond leveling,
 daily focus goals, local insight cards, restorative break prompts, session reflections, and JSON stats export. Sessions can also carry a focus intention, and local achievements
 unlock from focus milestones. JSON imports restore exported stats, and the share
 action copies or shares a short focus summary with daily energy without sending data to a server.

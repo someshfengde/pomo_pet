@@ -13,8 +13,8 @@ def test_pwa_entrypoint_references_runtime_files():
     html = (DOCS / "index.html").read_text()
 
     assert 'rel="manifest"' in html
-    assert "./styles.css?v=11" in html
-    assert "./app.js?v=11" in html
+    assert "./styles.css?v=14" in html
+    assert "./app.js?v=14" in html
     assert "startPauseButton" in html
     assert "notificationToggle" in html
     assert "wakeLockToggle" in html
@@ -80,8 +80,8 @@ def test_service_worker_precaches_app_shell():
 
     for required_asset in (
         "./index.html",
-        "./styles.css?v=11",
-        "./app.js?v=11",
+        "./styles.css?v=14",
+        "./app.js?v=14",
         "./manifest.webmanifest",
         "./assets/icons/icon-192.png",
         "./assets/icons/icon-512.png",
@@ -92,7 +92,7 @@ def test_service_worker_precaches_app_shell():
 
     assert "self.addEventListener(\"fetch\"" in service_worker
     assert "caches.match" in service_worker
-    assert "pomo-pet-pwa-v11" in service_worker
+    assert "pomo-pet-pwa-v14" in service_worker
     assert 'event.request.mode === "navigate"' in service_worker
     assert '["script", "style", "worker"]' in service_worker
 
@@ -110,10 +110,27 @@ def test_web_app_supports_required_pwa_features():
     assert "releaseWakeLock" in app
     assert "long_break" in app
     assert "PETS" in app
+    assert "DEFAULT_PET_META" in app
+    assert "frameHeight: 208" in app
+    assert "sheetWidth: 1536" in app
+    assert "frames: 1" in app
+    assert "applyPetSprite" in app
+    assert "spriteAnimationName" in app
+    assert "normalizePetMeta" in app
+    assert "resolveCodexPetShare" in app
+    assert "codexPetSlugFromUrl" in app
+    assert "fallbackCodexPetFromUrl" in app
+    assert "validationReport" in app
+    assert "spritesheetUrl" in app
+    assert "parseSize" in app
     assert "blueberry" in app
     assert "sunrise" in app
     assert "hue-rotate" in app
     assert "customPetUrl" in app
+    assert "customPetSourceUrl" in app
+    assert "customPetMeta" in app
+    assert "customPetStatusText" in app
+    assert "Paste a direct spritesheet or Codex Pets share link." in app
     assert "renderWeekChart" in app
     assert "renderInsights" in app
     assert "lastNDays" in app

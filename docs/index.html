@@ -27,7 +27,7 @@
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="icon" href="./assets/icons/icon-192.png">
   <link rel="apple-touch-icon" href="./assets/icons/icon-192.png">
-  <link rel="stylesheet" href="./styles.css?v=11">
+  <link rel="stylesheet" href="./styles.css?v=14">
   <script type="application/ld+json">
     {
       "@context": "https://schema.org",
@@ -97,9 +97,10 @@
         </div>
         <div id="petGallery" class="pet-gallery" role="list" aria-label="Available pets"></div>
         <label class="custom-pet-row">
-          <span>Custom spritesheet URL</span>
-          <input id="customPetInput" type="url" placeholder="https://example.com/spritesheet.webp">
+          <span>Custom pet or Codex Pets share URL</span>
+          <input id="customPetInput" type="url" placeholder="https://codex-pets.net/share/clipops">
         </label>
+        <p id="customPetStatus" class="data-status" aria-live="polite"></p>
       </section>
 
       <section class="panel-section">
@@ -310,6 +311,6 @@
     </div>
   </section>
 
-  <script src="./app.js?v=11" type="module"></script>
+  <script src="./app.js?v=14" type="module"></script>
 </body>
 </html>
