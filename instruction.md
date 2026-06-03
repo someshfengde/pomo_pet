@@ -1,15 +1,16 @@
 ## Core Idea
 
-Pomo Pet is a CLI application that combines the Pomodoro productivity technique with cute, interactive digital pets. Users can spawn their favorite pet on screen and watch it count down their work and break sessions while they focus on their tasks.
+Pomo Pet combines the Pomodoro productivity technique with cute, interactive digital pets. It ships as both a Python desktop companion and an installable static web app in `docs/`; users can focus with a pet on screen, manage local tasks, track sessions, and import compatible Codex Pets.
 
 ## Project Overview
 
-**Pomo Pet** is a Python-based CLI tool that:
+**Pomo Pet** is a Python-based desktop tool plus a local-first PWA that:
 - Displays an animated pet on the user's screen that can be moved freely
 - Runs a customizable Pomodoro timer (default: 25 min work, 5 min break)
 - Shows a status bar with the timer in the top right corner
 - Enables the pet to provide motivational feedback during work and rest sessions
 - Allows community contributions of new pets via pull requests
+- Provides a browser workspace with tasks, stats, achievements, custom Codex Pets URLs, offline support, and PWA installability
 
 ## Features
 
@@ -45,6 +46,7 @@ Pomo Pet is a CLI application that combines the Pomodoro productivity technique 
 - Multiple pets visible simultaneously
 - Dark mode / light mode themes
 - Desktop notifications
+- Task filters and richer web analytics
 
 ## Project Structure ( Rough feel free to modify as needed)
 
@@ -74,19 +76,21 @@ pomo_pet/
 ## Setup & Installation
 
 ### Prerequisites
-- Python 3.8+
-- pip (Python package manager)
+- Python 3.13+
+- uv or pip-compatible tooling
+- Node.js for Playwright web checks
 
 ### Installation Steps
 1. Clone the repository
 2. Navigate to the project directory: `cd pomo_pet`
-3. Install dependencies: `pip install -r requirements.txt`
-4. Run the application: `python -m src.cli`
+3. Install dependencies: `make install` or `uv sync --all-extras`
+4. Run the desktop app: `pomo-pet start avocado`
+5. Run the web app locally: `python3 -m http.server 4173 --directory docs`
 
-### Dependencies (To Include in requirements.txt)
+### Dependencies (Managed in pyproject.toml / uv.lock)
 - `click` - CLI argument parsing
 - `pillow` - Image handling for spritesheets
-- `pygame` or similar - Window management and rendering (pending selection)
+- `PySide6` - Window management and rendering
 - `pytest` - Testing framework
 - `pytest-cov` - Test coverage reporting
 
@@ -202,10 +206,11 @@ python -m src.cli --pet avocado --work 25 --break 5
 - [ ] Documentation and examples
 
 ### Phase 5: Optional Enhancements
-- [ ] Statistics tracking
-- [ ] Sound notifications
-- [ ] Pet animations and idle states
-- [ ] UI improvements and themes
+- [x] Statistics tracking
+- [x] Sound notifications
+- [x] Pet animations and idle states
+- [x] Web PWA with tasks, stats, Codex Pets import, and offline support
+- [ ] Richer task filtering and web analytics
 
 ## Testing Strategy
 
@@ -253,4 +258,3 @@ pytest --cov=src --cov-report=html
 ## Contact & Support
 
 For questions or issues, please open a GitHub issue or discussion. 
-

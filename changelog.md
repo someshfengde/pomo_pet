@@ -2,6 +2,19 @@
 
 All notable changes to Pomo Pet are documented here.
 
+## Current main — 2026-06-03
+
+### Added
+- Installable static PWA workspace in `docs/` with Focus, Session dock, Pet Lab, Stats, and Settings sections.
+- Built-in local task list for the web app; selected tasks become the active focus intention and completed sessions credit minutes to the task.
+- Codex Pets custom import support for `/pets/{slug}`, `/share/{slug}`, API URLs, direct spritesheets, and available pet metadata.
+- Web PWA test coverage with Playwright plus static PWA/repo-safety audit checks.
+
+### Fixed
+- Web sprites now use pet metadata dimensions instead of hardcoded frame sizes.
+- Idle web pets render a stable frame instead of sliding through spritesheet frames.
+- Public web metadata now points to the GitHub Pages deployment URL.
+
 ## [1.4.0] — 2026-05-29
 
 ### Fixed
@@ -101,7 +114,7 @@ All notable changes to Pomo Pet are documented here.
 - Paused overlay with "⏸ PAUSED" and hint text
 
 #### Animation System
-- 9 animation states loaded from Petdex-compatible spritesheets
+- 9 animation states loaded from Codex Pets-compatible spritesheets
 - One-shot system: `_play_once()` plays animation then returns to phase default
 - Phase-based auto-switching:
   - WORK → running/review (alternates every 10s)

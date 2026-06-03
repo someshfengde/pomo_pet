@@ -1,10 +1,15 @@
 # 🐾 Pomo Pet
 
-**Pomodoro timer with animated desktop pets**
+**Pomodoro timer with animated pets for desktop and the web**
 
 [![Python 3.13+](https://img.shields.io/badge/python-3.13+-blue.svg?logo=python&logoColor=white)](https://python.org)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-171%20passed-brightgreen.svg)](#testing)
+[![Tests](https://img.shields.io/badge/tests-171%20Python%20%2B%209%20web-brightgreen.svg)](#testing)
+
+Pomo Pet started as a tiny always-on-top desktop companion and now also ships as
+an installable, local-first web app. The web workspace combines a Pomodoro
+timer, animated pets, built-in focus tasks, Codex Pets imports, local stats,
+achievements, session reflections, offline support, and PWA install metadata.
 
 ## Quick Start
 
@@ -68,7 +73,8 @@ pomo-pet config volume 50
 
 - **Always on top** — pet stays visible above all other windows (7-layer reliability)
 - **Animated desktop pet** — floating transparent window with 9 animation states
-- **Installable web app** — PWA version in `docs/` with offline support and local stats
+- **Installable web app** — PWA in `docs/` with offline support, responsive workspace UI, and local stats
+- **Built-in focus tasks** — add/select/complete tasks directly in the web app; selected tasks become the active focus intention
 - **Pomodoro timer** — work / break / long break with progress bar
 - **Smart long breaks** — every 4th session triggers a 15-minute rest (configurable)
 - **Pet reactions** — animations change based on timer state, hover, dragging
@@ -78,6 +84,8 @@ pomo-pet config volume 50
 - **Sound effects** — phase changes, session completions, clicks
 - **macOS notifications** — native alerts when sessions complete
 - **Session statistics** — streaks, total focus time, daily counts (persisted)
+- **Web review tools** — weekly chart, insights, daily goal ring, achievements, history, reflections, import/export, and share summary
+- **Codex Pets support** — import custom pets from direct spritesheets, `codex-pets.net/pets/{slug}`, `share/{slug}`, or API URLs
 - **Right-click menu** — timer status, pause, reset, skip, move-to, hide, mini mode, quit
 - **Window position persistence** — remembers where you placed the pet
 - **Move-to positions** — quick snap to corners or center
@@ -119,13 +127,16 @@ pets/mypet/
 }
 ```
 
-Browse [Petdex](https://petdex.dev/) for spritesheet-compatible pets.
+Browse [Codex Pets](https://codex-pets.net/) for compatible pet pages and
+spritesheets. The web app accepts links such as
+`https://codex-pets.net/pets/dario` and reads available pet metadata for correct
+frame sizing.
 
 ## Development
 
 ```bash
 make install    # Install dependencies
-make test       # Run tests (171 passing)
+make test       # Run Python tests
 make test-all   # Run with coverage
 make run        # Launch with avocado
 make app        # Build macOS .app bundle
@@ -136,23 +147,26 @@ make app-dmg    # Build DMG for distribution
 
 The browser version lives in `docs/` so it can deploy directly to GitHub Pages.
 
+Public Pages URL: <https://someshfengde.github.io/pomo_pet/>
+
 ```bash
 python3 -m http.server 4173 --directory docs
 # Open http://127.0.0.1:4173
 ```
 
-It includes an animated pet, work/break/long-break timer, local-first stats,
-notifications, installable PWA metadata, and a service worker for offline use.
-The web app also includes a pet gallery entry point, custom spritesheet URL
-support, Codex Pets share-link import, bundled pet color variants, weekly focus chart, pet bond leveling,
-daily focus goals, local insight cards, restorative break prompts, session reflections, and JSON stats export. Sessions can also carry a focus intention, and local achievements
-unlock from focus milestones. JSON imports restore exported stats, and the share
-action copies or shares a short focus summary with daily energy without sending data to a server.
-First-run setup helps pick a preset and intention, while readiness indicators
-show install, offline, and local storage status. Launch metadata includes social
-preview tags, a generated preview image, install screenshots, and structured data for share-friendly public pages. The browser
-title follows the active timer, and an optional keep-awake setting can request a
-screen wake lock during running sessions.
+The web app is organized as a full-screen productivity workspace:
+
+- **Focus** — large timer stage, animated pet, progress bar, focus intention, and quick intention chips.
+- **Session dock** — start/reset/skip controls, presets, built-in task list, today's stats, pet bond, and break prompts.
+- **Pet Lab** — bundled variants plus custom Codex Pets URLs and direct spritesheets.
+- **Stats** — weekly focus chart, local insights, achievements, history, session reflections, JSON import/export, and share summary.
+- **Settings** — duration controls, notification toggle, gentle tick, keep-awake, install/offline/storage readiness.
+
+Everything is local-first: tasks, settings, stats, reflections, imported pets,
+and achievements stay in browser storage unless you export/share them yourself.
+The PWA also includes offline caching, install metadata, social preview tags,
+structured data, a generated preview image, service worker, notification support,
+browser title timer sync, and optional screen wake lock during running sessions.
 
 Web checks are covered by:
 
@@ -183,7 +197,7 @@ src/
     └── tray.py         # System tray integration
 docs/
 ├── index.html          # Static PWA app shell
-├── app.js              # Browser timer, pet gallery, stats, notifications
+├── app.js              # Browser timer, task list, pet gallery, stats, notifications
 ├── styles.css          # Responsive web UI
 ├── assets/preview.png  # Social/install preview image
 ├── manifest.webmanifest

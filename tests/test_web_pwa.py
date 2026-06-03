@@ -51,11 +51,11 @@ def test_launch_metadata_is_share_ready():
 
     assert "<title>Pomo Pet — Focus with an animated companion</title>" in html
     assert 'property="og:title"' in html
-    assert 'property="og:image" content="https://placeholder-reset.example.com/assets/preview.png"' in html
+    assert 'property="og:image" content="https://someshfengde.github.io/pomo_pet/assets/preview.png"' in html
     assert 'property="og:image:width" content="1200"' in html
     assert 'property="og:image:height" content="630"' in html
     assert 'name="twitter:card" content="summary_large_image"' in html
-    assert 'rel="canonical" href="https://placeholder-reset.example.com/"' in html
+    assert 'rel="canonical" href="https://someshfengde.github.io/pomo_pet/"' in html
     assert 'type="application/ld+json"' in html
 
     match = re.search(r'<script type="application/ld\+json">\s*(.*?)\s*</script>', html, re.S)

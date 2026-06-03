@@ -131,7 +131,11 @@ def audit_manifest() -> None:
 
 def audit_html_metadata() -> None:
     head = parse_head()
-    site_url = f"https://{read(ROOT / 'CNAME').strip().rstrip('/')}/"
+    cname_path = ROOT / "CNAME"
+    if cname_path.exists():
+        site_url = f"https://{read(cname_path).strip().rstrip('/')}/"
+    else:
+        site_url = "https://someshfengde.github.io/pomo_pet/"
     if "animated companion" not in head.title:
         fail("title should include launch-friendly app positioning")
     for key in (
