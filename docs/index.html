@@ -27,7 +27,7 @@
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="icon" href="./assets/icons/icon-192.png">
   <link rel="apple-touch-icon" href="./assets/icons/icon-192.png">
-  <link rel="stylesheet" href="./styles.css?v=15">
+  <link rel="stylesheet" href="./styles.css?v=16">
   <script type="application/ld+json">
     {
       "@context": "https://schema.org",
@@ -46,38 +46,43 @@
 </head>
 <body>
   <main class="app-shell">
-    <section class="timer-panel" aria-labelledby="app-title">
-      <div class="top-bar">
+    <header class="app-header" aria-label="Pomo Pet workspace">
+      <div>
+        <p class="eyebrow">Local-first focus companion</p>
+        <h1 id="app-title">Pomo Pet</h1>
+      </div>
+      <nav class="workspace-nav" aria-label="Workspace sections">
+        <a href="#focus">Focus</a>
+        <a href="#pet-lab">Pet Lab</a>
+        <a href="#stats">Stats</a>
+        <a href="#settings">Settings</a>
+      </nav>
+      <button class="icon-button" id="installButton" type="button" hidden aria-label="Install Pomo Pet">
+        <span aria-hidden="true">+</span>
+      </button>
+    </header>
+
+    <section id="focus" class="timer-panel" aria-labelledby="app-title">
+      <div class="focus-copy">
         <div>
-          <p class="eyebrow">Local-first focus companion</p>
-          <h1 id="app-title">Pomo Pet</h1>
+          <p class="phase-kicker" id="phaseLabel">Work</p>
+          <div id="timerText" class="timer-text">25:00</div>
         </div>
-        <button class="icon-button" id="installButton" type="button" hidden aria-label="Install Pomo Pet">
-          <span aria-hidden="true">+</span>
-        </button>
+        <div class="session-pill">
+          <span id="sessionLabel">0 sessions</span>
+        </div>
       </div>
 
       <div class="pet-stage" aria-live="polite">
         <div class="sprite-frame">
           <div id="petSprite" class="pet-sprite" role="img" aria-label="Animated avocado pet"></div>
         </div>
-        <div class="timer-card">
-          <div class="phase-row">
-            <span id="phaseLabel">Work</span>
-            <span id="sessionLabel">0 sessions</span>
-          </div>
-          <div id="timerText" class="timer-text">25:00</div>
+        <div class="focus-meter">
           <div class="progress-track" aria-hidden="true">
             <div id="progressFill" class="progress-fill"></div>
           </div>
           <p id="petMessage" class="pet-message">Pick a task. Your pet is ready.</p>
         </div>
-      </div>
-
-      <div class="primary-controls" aria-label="Timer controls">
-        <button id="startPauseButton" class="command-button primary" type="button">Start</button>
-        <button id="resetButton" class="command-button" type="button">Reset</button>
-        <button id="skipButton" class="command-button" type="button">Skip</button>
       </div>
 
       <div class="focus-intention" aria-label="Focus intention">
@@ -89,8 +94,80 @@
       </div>
     </section>
 
-    <aside class="side-panel" aria-label="Settings and statistics">
-      <section class="panel-section">
+    <aside class="control-dock" aria-label="Timer controls and daily progress">
+      <section class="panel-section command-center">
+        <div class="section-title">
+          <h2>Session</h2>
+          <span id="presetSummary">25 / 5</span>
+        </div>
+        <div class="primary-controls" aria-label="Timer controls">
+          <button id="startPauseButton" class="command-button primary" type="button">Start</button>
+          <button id="resetButton" class="command-button" type="button">Reset</button>
+          <button id="skipButton" class="command-button" type="button">Skip</button>
+        </div>
+        <div id="presetButtons" class="segmented-control" role="group" aria-label="Pomodoro presets"></div>
+      </section>
+
+      <section class="panel-section today-card">
+        <div class="section-title">
+          <h2>Today</h2>
+          <span id="todayDate"></span>
+        </div>
+        <div class="stats-grid">
+          <div>
+            <strong id="todaySessions">0</strong>
+            <span>sessions</span>
+          </div>
+          <div>
+            <strong id="todayFocus">0m</strong>
+            <span>focus</span>
+          </div>
+          <div>
+            <strong id="streakCount">0</strong>
+            <span>day streak</span>
+          </div>
+          <div>
+            <strong id="totalFocus">0m</strong>
+            <span>all focus</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel-section bond-panel">
+        <div class="section-title">
+          <h2>Bond</h2>
+          <span id="petMood">ready</span>
+        </div>
+        <div class="bond-card">
+          <div>
+            <strong id="petLevel">Level 1</strong>
+            <span id="petXp">0 XP</span>
+          </div>
+          <div class="goal-ring" aria-label="Daily focus goal progress">
+            <span id="goalPercent">0%</span>
+          </div>
+        </div>
+        <label class="goal-row">
+          <span>Daily goal</span>
+          <input id="dailyGoalInput" type="number" min="15" max="720" step="15" value="120">
+        </label>
+      </section>
+
+      <section id="breakPromptSection" class="panel-section break-section">
+        <div class="section-title">
+          <h2>Break prompt</h2>
+          <button id="nextBreakPromptButton" class="text-button" type="button">Next</button>
+        </div>
+        <p id="breakPrompt" class="break-prompt">Look away from the screen for a bit.</p>
+      </section>
+    </aside>
+
+    <section id="pet-lab" class="workspace-section pet-lab" aria-label="Pet lab">
+      <div class="section-lede">
+        <p class="eyebrow">Pet Lab</p>
+        <h2>Choose a companion without leaving the flow.</h2>
+      </div>
+      <div class="panel-section">
         <div class="section-title">
           <h2>Pet</h2>
           <a class="external-link" href="https://codex-pets.net/" target="_blank" rel="noreferrer">Browse gallery</a>
@@ -102,15 +179,13 @@
         </label>
         <p id="customPetStatus" class="data-status" aria-live="polite"></p>
       </section>
+    </section>
 
-      <section class="panel-section">
-        <div class="section-title">
-          <h2>Preset</h2>
-          <span id="presetSummary">25 / 5</span>
-        </div>
-        <div id="presetButtons" class="segmented-control" role="group" aria-label="Pomodoro presets"></div>
-      </section>
-
+    <section id="settings" class="workspace-section settings-board" aria-label="Timer settings">
+      <div class="section-lede">
+        <p class="eyebrow">Controls</p>
+        <h2>Tune the routine, then get the interface out of your way.</h2>
+      </div>
       <section class="panel-section">
         <div class="section-title">
           <h2>Durations</h2>
@@ -138,57 +213,43 @@
 
       <section class="panel-section">
         <div class="section-title">
-          <h2>Today</h2>
-          <span id="todayDate"></span>
+          <h2>Options</h2>
+          <span id="offlineStatus">offline-ready</span>
         </div>
-        <div class="stats-grid">
+        <div class="readiness-list" aria-label="App readiness">
           <div>
-            <strong id="todaySessions">0</strong>
-            <span>sessions</span>
+            <span>Install</span>
+            <strong id="installStatus">available</strong>
           </div>
           <div>
-            <strong id="todayFocus">0m</strong>
-            <span>focus</span>
+            <span>Offline</span>
+            <strong id="cacheStatus">checking</strong>
           </div>
           <div>
-            <strong id="streakCount">0</strong>
-            <span>day streak</span>
-          </div>
-          <div>
-            <strong id="totalFocus">0m</strong>
-            <span>all focus</span>
+            <span>Storage</span>
+            <strong id="storageStatus">local</strong>
           </div>
         </div>
-      </section>
-
-      <section class="panel-section">
-        <div class="section-title">
-          <h2>Bond</h2>
-          <span id="petMood">ready</span>
-        </div>
-        <div class="bond-card">
-          <div>
-            <strong id="petLevel">Level 1</strong>
-            <span id="petXp">0 XP</span>
-          </div>
-          <div class="goal-ring" aria-label="Daily focus goal progress">
-            <span id="goalPercent">0%</span>
-          </div>
-        </div>
-        <label class="goal-row">
-          <span>Daily goal</span>
-          <input id="dailyGoalInput" type="number" min="15" max="720" step="15" value="120">
+        <label class="toggle-row">
+          <span>Notifications</span>
+          <input id="notificationToggle" type="checkbox">
+        </label>
+        <label class="toggle-row">
+          <span>Gentle tick</span>
+          <input id="tickToggle" type="checkbox">
+        </label>
+        <label class="toggle-row">
+          <span>Keep screen awake</span>
+          <input id="wakeLockToggle" type="checkbox">
         </label>
       </section>
+    </section>
 
-      <section id="breakPromptSection" class="panel-section break-section">
-        <div class="section-title">
-          <h2>Break</h2>
-          <button id="nextBreakPromptButton" class="text-button" type="button">Next</button>
-        </div>
-        <p id="breakPrompt" class="break-prompt">Look away from the screen for a bit.</p>
-      </section>
-
+    <section id="stats" class="workspace-section stats-board" aria-label="Focus statistics">
+      <div class="section-lede">
+        <p class="eyebrow">Review</p>
+        <h2>See what happened without turning focus into homework.</h2>
+      </div>
       <section class="panel-section">
         <div class="section-title">
           <h2>Week</h2>
@@ -228,39 +289,6 @@
 
       <section class="panel-section">
         <div class="section-title">
-          <h2>Options</h2>
-          <span id="offlineStatus">offline-ready</span>
-        </div>
-        <div class="readiness-list" aria-label="App readiness">
-          <div>
-            <span>Install</span>
-            <strong id="installStatus">available</strong>
-          </div>
-          <div>
-            <span>Offline</span>
-            <strong id="cacheStatus">checking</strong>
-          </div>
-          <div>
-            <span>Storage</span>
-            <strong id="storageStatus">local</strong>
-          </div>
-        </div>
-        <label class="toggle-row">
-          <span>Notifications</span>
-          <input id="notificationToggle" type="checkbox">
-        </label>
-        <label class="toggle-row">
-          <span>Gentle tick</span>
-          <input id="tickToggle" type="checkbox">
-        </label>
-        <label class="toggle-row">
-          <span>Keep screen awake</span>
-          <input id="wakeLockToggle" type="checkbox">
-        </label>
-      </section>
-
-      <section class="panel-section">
-        <div class="section-title">
           <h2>Recent Focus</h2>
           <div class="section-actions">
             <button id="shareSummaryButton" class="text-button" type="button">Share</button>
@@ -273,7 +301,7 @@
         <p id="dataStatus" class="data-status" aria-live="polite"></p>
         <ol id="historyList" class="history-list"></ol>
       </section>
-    </aside>
+    </section>
   </main>
 
   <section id="onboardingOverlay" class="onboarding-overlay" hidden aria-labelledby="onboardingTitle" role="dialog" aria-modal="true">
@@ -311,6 +339,6 @@
     </div>
   </section>
 
-  <script src="./app.js?v=15" type="module"></script>
+  <script src="./app.js?v=16" type="module"></script>
 </body>
 </html>

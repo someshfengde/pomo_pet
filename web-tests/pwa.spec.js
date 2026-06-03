@@ -101,8 +101,9 @@ test("resolves Codex Pets share links", async ({ page, context }) => {
   await page.locator("#customPetInput").fill("https://codex-pets.net/share/clipops");
 
   await expect(page.locator("#customPetStatus")).toHaveText("Loaded ClipOps.");
-  const backgroundImage = await page.locator("#petSprite").evaluate((element) => getComputedStyle(element).backgroundImage);
-  expect(backgroundImage).toContain("https://codex-pets.net/assets/pets/v/1780497804791/clipops/spritesheet.webp");
+  await expect.poll(
+    () => page.locator("#petSprite").evaluate((element) => getComputedStyle(element).backgroundImage),
+  ).toContain("https://codex-pets.net/assets/pets/v/1780497804791/clipops/spritesheet.webp");
   await expect(page.locator("#petSprite")).toHaveCSS("height", "208px");
 });
 
@@ -199,7 +200,7 @@ test("exposes installable PWA metadata and service worker", async ({ page, conte
 
   const manifest = await page.locator('link[rel="manifest"]').getAttribute("href");
   expect(manifest).toBe("./manifest.webmanifest");
-  await expect(page.locator('script[src="./app.js?v=15"]')).toHaveCount(1);
+  await expect(page.locator('script[src="./app.js?v=16"]')).toHaveCount(1);
 
   const registrationScope = await page.evaluate(async () => {
     const registration = await navigator.serviceWorker.ready;

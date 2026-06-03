@@ -1155,11 +1155,13 @@ function codexPetSlugFromUrl(value) {
 }
 
 function petLabelFromSlug(slug) {
-  return slug
+  const label = slug
     .split(/[-_]+/)
     .filter(Boolean)
     .map((part) => part[0]?.toUpperCase() + part.slice(1))
-    .join(" ") || "Codex pet";
+    .join(" ");
+  if (!label) return "Codex pet";
+  return label.replace(/ops\b/i, "Ops");
 }
 
 async function resolveCodexPetShare(url) {

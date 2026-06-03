@@ -13,8 +13,8 @@ def test_pwa_entrypoint_references_runtime_files():
     html = (DOCS / "index.html").read_text()
 
     assert 'rel="manifest"' in html
-    assert "./styles.css?v=15" in html
-    assert "./app.js?v=15" in html
+    assert "./styles.css?v=16" in html
+    assert "./app.js?v=16" in html
     assert "startPauseButton" in html
     assert "notificationToggle" in html
     assert "wakeLockToggle" in html
@@ -80,8 +80,8 @@ def test_service_worker_precaches_app_shell():
 
     for required_asset in (
         "./index.html",
-        "./styles.css?v=15",
-        "./app.js?v=15",
+        "./styles.css?v=16",
+        "./app.js?v=16",
         "./manifest.webmanifest",
         "./assets/icons/icon-192.png",
         "./assets/icons/icon-512.png",
@@ -92,7 +92,7 @@ def test_service_worker_precaches_app_shell():
 
     assert "self.addEventListener(\"fetch\"" in service_worker
     assert "caches.match" in service_worker
-    assert "pomo-pet-pwa-v15" in service_worker
+    assert "pomo-pet-pwa-v16" in service_worker
     assert 'event.request.mode === "navigate"' in service_worker
     assert '["script", "style", "worker"]' in service_worker
 
