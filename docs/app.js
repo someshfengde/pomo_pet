@@ -487,9 +487,9 @@ function applyPetSprite(meta, spriteUrl) {
 }
 
 function customPetStatusText(customSprite) {
-  if (customSprite && state.settings.customPetSourceUrl) return `Loaded ${state.settings.customPetLabel || "Codex Pets share link"}.`;
+  if (customSprite && state.settings.customPetSourceUrl) return `Loaded ${state.settings.customPetLabel || "Codex Pets link"}.`;
   if (customSprite) return "Using direct spritesheet.";
-  if (state.settings.customPetUrl || state.settings.customPetSourceUrl) return "Paste a direct spritesheet or Codex Pets share link.";
+  if (state.settings.customPetUrl || state.settings.customPetSourceUrl) return "Paste a direct spritesheet or Codex Pets link.";
   return "";
 }
 
@@ -1063,7 +1063,7 @@ function bindEvents() {
 function scheduleCustomPetResolve() {
   const value = els.customPetInput.value.trim();
   window.clearTimeout(customPetResolveTimer);
-  if (!value || isDirectSpritesheetUrl(value)) {
+  if (!value || (isDirectSpritesheetUrl(value) && !isCodexPetsUrl(value))) {
     setDirectCustomPet(value);
     return;
   }
@@ -1085,7 +1085,7 @@ async function resolveCustomPetInput(value) {
   try {
     if (!isCodexPetsUrl(value)) {
       if (isDirectSpritesheetUrl(value)) setDirectCustomPet(value);
-      else els.customPetStatus.textContent = "Use a direct spritesheet or Codex Pets share link.";
+      else els.customPetStatus.textContent = "Use a direct spritesheet or Codex Pets link.";
       return;
     }
     const fallback = fallbackCodexPetFromUrl(value);
@@ -1130,9 +1130,10 @@ function isCodexPetsUrl(value) {
 
 function fallbackCodexPetFromUrl(value) {
   const slug = codexPetSlugFromUrl(value);
+  const directSprite = isDirectSpritesheetUrl(value) ? value : "";
   if (!slug) throw new Error("missing pet slug");
   return {
-    sprite: `https://codex-pets.net/api/pets/${encodeURIComponent(slug)}/spritesheet`,
+    sprite: directSprite || `https://codex-pets.net/api/pets/${encodeURIComponent(slug)}/spritesheet`,
     label: petLabelFromSlug(slug),
     meta: DEFAULT_PET_META,
   };
@@ -1142,8 +1143,12 @@ function codexPetSlugFromUrl(value) {
   const url = new URL(value);
   const shareMatch = url.pathname.match(/^\/share\/([^/?#]+)/);
   if (shareMatch) return decodeURIComponent(shareMatch[1]);
+  const petMatch = url.pathname.match(/^\/pets\/([^/?#]+)/);
+  if (petMatch) return decodeURIComponent(petMatch[1]);
   const apiMatch = url.pathname.match(/^\/api\/pets\/([^/?#]+)/);
   if (apiMatch) return decodeURIComponent(apiMatch[1]);
+  const assetMatch = url.pathname.match(/^\/assets\/pets\/v\/[^/]+\/([^/?#]+)\//);
+  if (assetMatch) return decodeURIComponent(assetMatch[1]);
   const hashMatch = url.hash.match(/^#\/pets\/([^/?#]+)/);
   if (hashMatch) return decodeURIComponent(hashMatch[1]);
   return "";
@@ -1160,17 +1165,67 @@ function petLabelFromSlug(slug) {
 async function resolveCodexPetShare(url) {
   const slug = codexPetSlugFromUrl(url);
   if (!slug) throw new Error("missing pet slug");
-  const response = await fetch(`https://codex-pets.net/api/pets/${encodeURIComponent(slug)}`, {
-    headers: { accept: "application/json" },
-  });
-  if (!response.ok) throw new Error("pet API unavailable");
-  const payload = await response.json();
-  const petMeta = payload.pet || payload;
+  const apiPetMeta = await fetchPetJson(`https://codex-pets.net/api/pets/${encodeURIComponent(slug)}`).catch(() => ({}));
+  const apiPet = apiPetMeta.pet || apiPetMeta;
+  const sprite = spriteUrlFromPetMeta(apiPet, url, slug);
+  const manifestUrl = petManifestUrlFromSprite(sprite);
+  const manifestMeta = manifestUrl ? await fetchPetJson(manifestUrl).catch(() => ({})) : {};
+  const petMeta = mergePetMeta(apiPet, manifestMeta);
+  if (!hasPetManifestData(apiPet) && !hasPetManifestData(manifestMeta)) throw new Error("pet manifest unavailable");
   return {
-    sprite: petMeta.spritesheetUrl || `https://codex-pets.net/api/pets/${encodeURIComponent(slug)}/spritesheet`,
+    sprite: spriteUrlFromPetMeta(petMeta, url, slug),
     label: petMeta.displayName || petMeta.id || "custom pet",
     meta: normalizePetMeta(petMeta),
   };
+}
+
+async function fetchPetJson(url) {
+  const response = await fetch(url, { headers: { accept: "application/json" } });
+  if (!response.ok) throw new Error("pet manifest unavailable");
+  return response.json();
+}
+
+function mergePetMeta(apiPet, manifestPet) {
+  return {
+    ...apiPet,
+    ...manifestPet,
+    validationReport: manifestPet.validationReport || apiPet.validationReport,
+    spritesheetUrl: manifestPet.spritesheetUrl || apiPet.spritesheetUrl,
+    displayName: manifestPet.displayName || apiPet.displayName,
+    id: manifestPet.id || apiPet.id,
+  };
+}
+
+function hasPetManifestData(meta) {
+  return Boolean(meta.id || meta.displayName || meta.spritesheetUrl || meta.spritesheetPath || meta.validationReport || meta.frameWidth || meta.frameHeight);
+}
+
+function spriteUrlFromPetMeta(meta, sourceUrl, slug) {
+  if (meta.spritesheetUrl) return absolutePetUrl(meta.spritesheetUrl, sourceUrl);
+  if (meta.spritesheetPath && isDirectSpritesheetUrl(sourceUrl)) return absolutePetUrl(meta.spritesheetPath, sourceUrl);
+  if (isDirectSpritesheetUrl(sourceUrl)) return sourceUrl;
+  return `https://codex-pets.net/api/pets/${encodeURIComponent(slug)}/spritesheet`;
+}
+
+function petManifestUrlFromSprite(spriteUrl) {
+  try {
+    const url = new URL(spriteUrl);
+    if (url.hostname !== "codex-pets.net" || !isDirectSpritesheetUrl(url.href)) return "";
+    url.pathname = url.pathname.replace(/[^/]+$/, "pet.json");
+    url.search = "";
+    url.hash = "";
+    return url.href;
+  } catch {
+    return "";
+  }
+}
+
+function absolutePetUrl(path, sourceUrl) {
+  try {
+    return new URL(path, sourceUrl).href;
+  } catch {
+    return path;
+  }
 }
 
 function normalizePetMeta(meta) {

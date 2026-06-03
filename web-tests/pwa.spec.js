@@ -106,6 +106,47 @@ test("resolves Codex Pets share links", async ({ page, context }) => {
   await expect(page.locator("#petSprite")).toHaveCSS("height", "208px");
 });
 
+test("resolves Codex Pets pet pages with manifest sizing", async ({ page, context }) => {
+  await context.route("**/api/pets/dario", async (route) => {
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        pet: {
+          id: "dario",
+          displayName: "Dario",
+          spritesheetUrl: "https://codex-pets.net/assets/pets/v/1777693574152/dario/spritesheet.webp",
+          validationReport: {
+            atlasSize: "1536x1872",
+            cellSize: "192x208",
+          },
+        },
+      }),
+      headers: { "access-control-allow-origin": "*" },
+    });
+  });
+  await context.route("**/assets/pets/v/1777693574152/dario/pet.json", async (route) => {
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        id: "dario",
+        displayName: "Dario",
+        spritesheetPath: "spritesheet.webp",
+      }),
+      headers: { "access-control-allow-origin": "*" },
+    });
+  });
+
+  await completeOnboarding(page);
+  await page.locator("#customPetInput").fill("https://codex-pets.net/pets/dario");
+
+  await expect(page.locator("#customPetStatus")).toHaveText("Loaded Dario.");
+  const sprite = page.locator("#petSprite");
+  await expect(sprite).toHaveCSS("width", "192px");
+  await expect(sprite).toHaveCSS("height", "208px");
+  await expect(sprite).toHaveCSS("background-size", "1536px");
+  await expect(sprite).toHaveAttribute("aria-label", "Animated custom pet");
+});
+
 test("captures post-session reflections locally", async ({ page }) => {
   await page.addInitScript(() => {
     window.localStorage.setItem("pomo-pet.web.v1", JSON.stringify({
@@ -158,7 +199,7 @@ test("exposes installable PWA metadata and service worker", async ({ page, conte
 
   const manifest = await page.locator('link[rel="manifest"]').getAttribute("href");
   expect(manifest).toBe("./manifest.webmanifest");
-  await expect(page.locator('script[src="./app.js?v=14"]')).toHaveCount(1);
+  await expect(page.locator('script[src="./app.js?v=15"]')).toHaveCount(1);
 
   const registrationScope = await page.evaluate(async () => {
     const registration = await navigator.serviceWorker.ready;

@@ -13,8 +13,8 @@ def test_pwa_entrypoint_references_runtime_files():
     html = (DOCS / "index.html").read_text()
 
     assert 'rel="manifest"' in html
-    assert "./styles.css?v=14" in html
-    assert "./app.js?v=14" in html
+    assert "./styles.css?v=15" in html
+    assert "./app.js?v=15" in html
     assert "startPauseButton" in html
     assert "notificationToggle" in html
     assert "wakeLockToggle" in html
@@ -80,8 +80,8 @@ def test_service_worker_precaches_app_shell():
 
     for required_asset in (
         "./index.html",
-        "./styles.css?v=14",
-        "./app.js?v=14",
+        "./styles.css?v=15",
+        "./app.js?v=15",
         "./manifest.webmanifest",
         "./assets/icons/icon-192.png",
         "./assets/icons/icon-512.png",
@@ -92,7 +92,7 @@ def test_service_worker_precaches_app_shell():
 
     assert "self.addEventListener(\"fetch\"" in service_worker
     assert "caches.match" in service_worker
-    assert "pomo-pet-pwa-v14" in service_worker
+    assert "pomo-pet-pwa-v15" in service_worker
     assert 'event.request.mode === "navigate"' in service_worker
     assert '["script", "style", "worker"]' in service_worker
 
@@ -120,8 +120,12 @@ def test_web_app_supports_required_pwa_features():
     assert "resolveCodexPetShare" in app
     assert "codexPetSlugFromUrl" in app
     assert "fallbackCodexPetFromUrl" in app
+    assert "petManifestUrlFromSprite" in app
+    assert "mergePetMeta" in app
+    assert "/pets/" in app
     assert "validationReport" in app
     assert "spritesheetUrl" in app
+    assert "spritesheetPath" in app
     assert "parseSize" in app
     assert "blueberry" in app
     assert "sunrise" in app
@@ -130,7 +134,7 @@ def test_web_app_supports_required_pwa_features():
     assert "customPetSourceUrl" in app
     assert "customPetMeta" in app
     assert "customPetStatusText" in app
-    assert "Paste a direct spritesheet or Codex Pets share link." in app
+    assert "Paste a direct spritesheet or Codex Pets link." in app
     assert "renderWeekChart" in app
     assert "renderInsights" in app
     assert "lastNDays" in app
