@@ -13,8 +13,8 @@ def test_pwa_entrypoint_references_runtime_files():
     html = (DOCS / "index.html").read_text()
 
     assert 'rel="manifest"' in html
-    assert "./styles.css?v=16" in html
-    assert "./app.js?v=16" in html
+    assert "./styles.css?v=17" in html
+    assert "./app.js?v=17" in html
     assert "startPauseButton" in html
     assert "notificationToggle" in html
     assert "wakeLockToggle" in html
@@ -30,6 +30,9 @@ def test_pwa_entrypoint_references_runtime_files():
     assert "achievementList" in html
     assert "importStatsButton" in html
     assert "shareSummaryButton" in html
+    assert "taskForm" in html
+    assert "taskInput" in html
+    assert "taskList" in html
     assert "dataStatus" in html
     assert "onboardingOverlay" in html
     assert "breakPrompt" in html
@@ -80,8 +83,8 @@ def test_service_worker_precaches_app_shell():
 
     for required_asset in (
         "./index.html",
-        "./styles.css?v=16",
-        "./app.js?v=16",
+        "./styles.css?v=17",
+        "./app.js?v=17",
         "./manifest.webmanifest",
         "./assets/icons/icon-192.png",
         "./assets/icons/icon-512.png",
@@ -92,7 +95,7 @@ def test_service_worker_precaches_app_shell():
 
     assert "self.addEventListener(\"fetch\"" in service_worker
     assert "caches.match" in service_worker
-    assert "pomo-pet-pwa-v16" in service_worker
+    assert "pomo-pet-pwa-v17" in service_worker
     assert 'event.request.mode === "navigate"' in service_worker
     assert '["script", "style", "worker"]' in service_worker
 
@@ -145,6 +148,12 @@ def test_web_app_supports_required_pwa_features():
     assert "INTENTION_PRESETS" in app
     assert "ACHIEVEMENTS" in app
     assert "currentIntention" in app
+    assert "activeTaskId" in app
+    assert "renderTasks" in app
+    assert "addTask" in app
+    assert "selectTask" in app
+    assert "creditActiveTask" in app
+    assert "normalizeTasks" in app
     assert "importStatsFromFile" in app
     assert "shareSummary" in app
     assert "buildSummaryText" in app

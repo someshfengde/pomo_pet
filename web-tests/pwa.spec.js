@@ -61,6 +61,35 @@ test("supports quick focus intention chips", async ({ page }) => {
   await expect(page.getByRole("button", { name: "Writing" })).toHaveAttribute("aria-pressed", "true");
 });
 
+test("integrates local task list with focus sessions", async ({ page }) => {
+  await completeOnboarding(page);
+
+  await expect(page.locator("#taskSummary")).toHaveText("0 open");
+  await page.locator("#taskInput").fill("Write launch checklist");
+  await page.getByRole("button", { name: "Add" }).click();
+
+  await expect(page.locator("#taskSummary")).toHaveText("1 open");
+  await expect(page.locator("#taskList")).toContainText("Write launch checklist");
+  await expect(page.locator("#intentionInput")).toHaveValue("Write launch checklist");
+  await expect(page.locator('.task-item[data-active="true"]')).toContainText("Write launch checklist");
+
+  await page.locator("#workInput").fill("1");
+  await page.evaluate(() => {
+    const stored = JSON.parse(localStorage.getItem("pomo-pet.web.v1"));
+    stored.timer.remaining = 1;
+    localStorage.setItem("pomo-pet.web.v1", JSON.stringify(stored));
+  });
+  await page.reload();
+  await page.locator("#startPauseButton").click();
+  await expect(page.locator("#sessionReviewOverlay")).toBeVisible({ timeout: 3000 });
+  await page.locator("#skipReviewButton").click();
+  await expect(page.locator("#taskList")).toContainText("1m focused");
+
+  await page.getByLabel("Complete Write launch checklist").check();
+  await expect(page.locator("#taskSummary")).toHaveText("0 open");
+  await expect(page.locator('.task-item[data-completed="true"]')).toContainText("Write launch checklist");
+});
+
 test("supports custom pet spritesheets", async ({ page }) => {
   await completeOnboarding(page);
 
@@ -200,7 +229,7 @@ test("exposes installable PWA metadata and service worker", async ({ page, conte
 
   const manifest = await page.locator('link[rel="manifest"]').getAttribute("href");
   expect(manifest).toBe("./manifest.webmanifest");
-  await expect(page.locator('script[src="./app.js?v=16"]')).toHaveCount(1);
+  await expect(page.locator('script[src="./app.js?v=17"]')).toHaveCount(1);
 
   const registrationScope = await page.evaluate(async () => {
     const registration = await navigator.serviceWorker.ready;

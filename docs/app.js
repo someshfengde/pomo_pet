@@ -140,6 +140,10 @@ const els = {
   startPauseButton: document.querySelector("#startPauseButton"),
   resetButton: document.querySelector("#resetButton"),
   skipButton: document.querySelector("#skipButton"),
+  taskForm: document.querySelector("#taskForm"),
+  taskInput: document.querySelector("#taskInput"),
+  taskList: document.querySelector("#taskList"),
+  taskSummary: document.querySelector("#taskSummary"),
   presetButtons: document.querySelector("#presetButtons"),
   presetSummary: document.querySelector("#presetSummary"),
   workInput: document.querySelector("#workInput"),
@@ -212,6 +216,7 @@ function defaultState() {
       customPetMeta: null,
       dailyGoalMinutes: 120,
       currentIntention: "",
+      activeTaskId: "",
       breakPromptIndex: 0,
       onboarded: false,
     },
@@ -224,6 +229,7 @@ function defaultState() {
     },
     stats: {
       sessions: [],
+      tasks: [],
       bestStreak: 0,
     },
   };
@@ -242,7 +248,11 @@ function mergeState(base, saved) {
   return {
     settings: { ...base.settings, ...saved.settings },
     timer: { ...base.timer, ...saved.timer, running: false },
-    stats: { ...base.stats, ...saved.stats },
+    stats: {
+      ...base.stats,
+      ...saved.stats,
+      tasks: normalizeTasks(saved.stats?.tasks || []),
+    },
   };
 }
 
@@ -397,6 +407,100 @@ function renderIntentionChips() {
   });
 }
 
+function renderTasks() {
+  const tasks = normalizeTasks(state.stats.tasks);
+  if (tasks.length !== state.stats.tasks.length) {
+    state.stats.tasks = tasks;
+    saveState();
+  }
+  const openTasks = tasks.filter((task) => !task.completed);
+  els.taskSummary.textContent = `${openTasks.length} open`;
+  els.taskList.innerHTML = "";
+
+  if (!tasks.length) {
+    const empty = document.createElement("p");
+    empty.className = "task-empty";
+    empty.textContent = "Add one task to make the next session obvious.";
+    els.taskList.append(empty);
+    return;
+  }
+
+  tasks.forEach((task) => {
+    const item = document.createElement("article");
+    item.className = "task-item";
+    item.dataset.completed = String(task.completed);
+    item.dataset.active = String(task.id === state.settings.activeTaskId);
+    item.innerHTML = `
+      <label class="task-check">
+        <input type="checkbox" ${task.completed ? "checked" : ""} aria-label="Complete ${escapeAttribute(task.title)}">
+        <span>${task.completed ? "Done" : "Open"}</span>
+      </label>
+      <button class="task-select" type="button">
+        <strong>${escapeHtml(task.title)}</strong>
+        <small>${task.focusMinutes ? `${task.focusMinutes}m focused` : "Ready for focus"}</small>
+      </button>
+      <button class="task-delete" type="button" aria-label="Delete ${escapeAttribute(task.title)}">×</button>
+    `;
+    item.querySelector(".task-check input").addEventListener("change", (event) => toggleTask(task.id, event.target.checked));
+    item.querySelector(".task-select").addEventListener("click", () => selectTask(task.id));
+    item.querySelector(".task-delete").addEventListener("click", () => deleteTask(task.id));
+    els.taskList.append(item);
+  });
+}
+
+function addTask(title) {
+  const cleanedTitle = title.trim().replace(/\s+/g, " ").slice(0, 80);
+  if (!cleanedTitle) return;
+  const task = {
+    id: crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}`,
+    title: cleanedTitle,
+    completed: false,
+    focusMinutes: 0,
+    createdAt: new Date().toISOString(),
+    completedAt: "",
+  };
+  state.stats.tasks = [task, ...normalizeTasks(state.stats.tasks)].slice(0, 30);
+  selectTask(task.id, { persist: false });
+  els.taskInput.value = "";
+  saveState();
+  render();
+}
+
+function selectTask(taskId, { persist = true } = {}) {
+  const task = state.stats.tasks.find((item) => item.id === taskId);
+  if (!task || task.completed) return;
+  state.settings.activeTaskId = task.id;
+  state.settings.currentIntention = task.title;
+  if (persist) {
+    saveState();
+    render();
+  }
+}
+
+function toggleTask(taskId, completed) {
+  const task = state.stats.tasks.find((item) => item.id === taskId);
+  if (!task) return;
+  task.completed = Boolean(completed);
+  task.completedAt = task.completed ? new Date().toISOString() : "";
+  if (task.completed && state.settings.activeTaskId === task.id) {
+    state.settings.activeTaskId = "";
+  } else if (!task.completed) {
+    state.settings.activeTaskId = task.id;
+    state.settings.currentIntention = task.title;
+  }
+  saveState();
+  render();
+}
+
+function deleteTask(taskId) {
+  state.stats.tasks = state.stats.tasks.filter((task) => task.id !== taskId);
+  if (state.settings.activeTaskId === taskId) {
+    state.settings.activeTaskId = "";
+  }
+  saveState();
+  render();
+}
+
 function render() {
   const total = Math.max(durationForPhase(), 1);
   const progress = Math.max(0, Math.min(1, state.timer.remaining / total));
@@ -457,6 +561,7 @@ function render() {
   renderOnboardingPresets();
   renderPetGallery();
   renderIntentionChips();
+  renderTasks();
   renderHistory();
   renderWeekChart();
   renderInsights();
@@ -743,6 +848,7 @@ function recordSession() {
     time: new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit" }).format(now),
     preset: state.settings.preset,
     pet: isDirectSpritesheetUrl(state.settings.customPetUrl) ? "custom" : currentPet().label,
+    taskId: state.settings.activeTaskId,
     intention: state.settings.currentIntention,
     reflection: "",
     energy: 0,
@@ -750,7 +856,14 @@ function recordSession() {
     completedAt: now.toISOString(),
   };
   state.stats.sessions.push(session);
+  creditActiveTask(session.focusMinutes);
   return session.id;
+}
+
+function creditActiveTask(focusMinutes) {
+  const task = state.stats.tasks.find((item) => item.id === state.settings.activeTaskId);
+  if (!task || task.completed) return;
+  task.focusMinutes = Math.max(0, Number(task.focusMinutes) || 0) + focusMinutes;
 }
 
 function openSessionReview(sessionId) {
@@ -820,6 +933,7 @@ function normalizeImportedStats(stats) {
     : [];
   return {
     sessions,
+    tasks: normalizeTasks(stats.tasks || []),
     bestStreak: Number.isFinite(Number(stats.bestStreak)) ? Number(stats.bestStreak) : 0,
   };
 }
@@ -834,11 +948,31 @@ function normalizeImportedSession(session) {
     time: typeof session.time === "string" ? session.time : "",
     preset: typeof session.preset === "string" ? session.preset : "custom",
     pet: typeof session.pet === "string" ? session.pet : currentPet().label,
+    taskId: typeof session.taskId === "string" ? session.taskId : "",
     intention: typeof session.intention === "string" ? session.intention : "",
     reflection: typeof session.reflection === "string" ? session.reflection.slice(0, 220) : "",
     energy: normalizeEnergy(session.energy),
     focusMinutes,
     completedAt: typeof session.completedAt === "string" ? session.completedAt : new Date().toISOString(),
+  };
+}
+
+function normalizeTasks(tasks) {
+  if (!Array.isArray(tasks)) return [];
+  return tasks.map(normalizeTask).filter(Boolean).slice(0, 30);
+}
+
+function normalizeTask(task) {
+  if (!task || typeof task !== "object") return null;
+  const title = typeof task.title === "string" ? task.title.trim().replace(/\s+/g, " ").slice(0, 80) : "";
+  if (!title) return null;
+  return {
+    id: String(task.id || `${Date.now()}-${Math.random()}`),
+    title,
+    completed: Boolean(task.completed),
+    focusMinutes: Math.max(0, Math.round(Number(task.focusMinutes) || 0)),
+    createdAt: typeof task.createdAt === "string" ? task.createdAt : new Date().toISOString(),
+    completedAt: typeof task.completedAt === "string" ? task.completedAt : "",
   };
 }
 
@@ -865,6 +999,7 @@ function sanitizeImportedSettings(settings) {
     allowed.customPetMeta = normalizePetMeta(settings.customPetMeta);
   }
   if (typeof settings.currentIntention === "string") allowed.currentIntention = settings.currentIntention.slice(0, 80);
+  if (typeof settings.activeTaskId === "string") allowed.activeTaskId = settings.activeTaskId;
   if (Number.isFinite(Number(settings.breakPromptIndex))) {
     allowed.breakPromptIndex = normalizeBreakPromptIndex(settings.breakPromptIndex);
   }
@@ -873,6 +1008,20 @@ function sanitizeImportedSettings(settings) {
     if (Number.isFinite(value)) allowed[key] = value;
   });
   return allowed;
+}
+
+function escapeHtml(value) {
+  return String(value).replace(/[&<>"']/g, (character) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    "\"": "&quot;",
+    "'": "&#39;",
+  }[character]));
+}
+
+function escapeAttribute(value) {
+  return escapeHtml(value);
 }
 
 async function shareSummary() {
@@ -1000,6 +1149,10 @@ function bindEvents() {
   els.startPauseButton.addEventListener("click", startPause);
   els.resetButton.addEventListener("click", resetTimer);
   els.skipButton.addEventListener("click", skipPhase);
+  els.taskForm.addEventListener("submit", (event) => {
+    event.preventDefault();
+    addTask(els.taskInput.value);
+  });
   els.onboardingIntentionInput.addEventListener("input", () => {
     state.settings.currentIntention = els.onboardingIntentionInput.value.trim();
     saveState();
@@ -1008,6 +1161,10 @@ function bindEvents() {
   els.onboardingStartButton.addEventListener("click", completeOnboarding);
   els.intentionInput.addEventListener("input", () => {
     state.settings.currentIntention = els.intentionInput.value.trim();
+    const activeTask = state.stats.tasks.find((task) => task.id === state.settings.activeTaskId);
+    if (!activeTask || activeTask.title !== state.settings.currentIntention) {
+      state.settings.activeTaskId = "";
+    }
     saveState();
     render();
   });

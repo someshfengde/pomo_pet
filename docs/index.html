@@ -27,7 +27,7 @@
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="icon" href="./assets/icons/icon-192.png">
   <link rel="apple-touch-icon" href="./assets/icons/icon-192.png">
-  <link rel="stylesheet" href="./styles.css?v=16">
+  <link rel="stylesheet" href="./styles.css?v=17">
   <script type="application/ld+json">
     {
       "@context": "https://schema.org",
@@ -106,6 +106,18 @@
           <button id="skipButton" class="command-button" type="button">Skip</button>
         </div>
         <div id="presetButtons" class="segmented-control" role="group" aria-label="Pomodoro presets"></div>
+      </section>
+
+      <section class="panel-section task-panel">
+        <div class="section-title">
+          <h2>Tasks</h2>
+          <span id="taskSummary">0 open</span>
+        </div>
+        <form id="taskForm" class="task-form">
+          <input id="taskInput" type="text" maxlength="80" placeholder="Add a task">
+          <button class="text-button" type="submit">Add</button>
+        </form>
+        <div id="taskList" class="task-list" aria-label="Focus tasks"></div>
       </section>
 
       <section class="panel-section today-card">
@@ -339,6 +351,6 @@
     </div>
   </section>
 
-  <script src="./app.js?v=16" type="module"></script>
+  <script src="./app.js?v=17" type="module"></script>
 </body>
 </html>

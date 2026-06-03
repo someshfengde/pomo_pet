@@ -123,8 +123,6 @@ a {
 
 .control-dock {
   grid-area: dock;
-  position: sticky;
-  top: 18px;
   display: grid;
   gap: 14px;
 }
@@ -404,6 +402,7 @@ h2 {
 }
 
 .focus-intention input:focus-visible,
+.task-form input:focus-visible,
 .custom-pet-row input:focus-visible,
 .duration-grid input:focus-visible,
 .goal-row input:focus-visible,
@@ -444,6 +443,111 @@ a:focus-visible {
   background:
     linear-gradient(145deg, rgba(121, 226, 143, 0.12), transparent 44%),
     var(--surface);
+}
+
+.task-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.task-form input {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px 11px;
+  color: var(--text);
+  background: rgba(0, 0, 0, 0.22);
+}
+
+.task-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.task-empty {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.task-item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) 34px;
+  align-items: center;
+  gap: 8px;
+  padding: 9px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.045);
+}
+
+.task-item[data-active="true"] {
+  border-color: rgba(121, 226, 143, 0.75);
+  background: rgba(121, 226, 143, 0.11);
+}
+
+.task-item[data-completed="true"] {
+  opacity: 0.66;
+}
+
+.task-check {
+  display: grid;
+  justify-items: center;
+  gap: 3px;
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.task-check input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--green);
+}
+
+.task-select {
+  min-width: 0;
+  border: 0;
+  padding: 4px 0;
+  color: var(--text);
+  text-align: left;
+  background: transparent;
+  cursor: pointer;
+}
+
+.task-select strong,
+.task-select small {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.task-select small {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.task-item[data-completed="true"] .task-select strong {
+  text-decoration: line-through;
+}
+
+.task-delete {
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.04);
+  cursor: pointer;
 }
 
 .primary-controls {
