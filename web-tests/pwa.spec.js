@@ -8,37 +8,52 @@ async function completeOnboarding(page) {
   }
 }
 
+async function goToRoute(page, route) {
+  await page.locator(`[data-route-link="${route}"]`).click();
+  await expect(page.locator(`[data-route="${route}"]`)).toBeVisible();
+}
+
 test("runs the timer and persists settings locally", async ({ page }) => {
   await completeOnboarding(page);
 
   await expect(page.getByRole("heading", { name: "Pomo Pet" })).toBeVisible();
   await expect(page.locator("#timerText")).toHaveText("25:00");
   await expect(page).toHaveTitle("Pomo Pet - Work ready");
+
+  await goToRoute(page, "pets");
   await expect(page.getByRole("link", { name: "Browse gallery" })).toHaveAttribute("href", "https://codex-pets.net/");
+
+  await goToRoute(page, "stats");
   await expect(page.locator("#weekChart .week-bar")).toHaveCount(7);
   await expect(page.locator("#insightBestDay")).toHaveText("none yet");
   await expect(page.locator("#insightEnergy")).toHaveText("unrated");
   await expect(page.locator("#insightMomentum")).not.toBeEmpty();
   await expect(page.locator("#totalFocus")).toHaveText("0m");
-  await expect(page.locator("#petLevel")).toHaveText("Level 1");
-  await expect(page.locator("#petXp")).toHaveText("0 XP");
-  await expect(page.locator("#goalPercent")).toHaveText("0%");
   await expect(page.locator("#achievementList .achievement-item")).toHaveCount(4);
   await expect(page.getByRole("button", { name: "Share" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Import" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Export" })).toBeVisible();
+
+  await goToRoute(page, "settings");
+  await expect(page.locator("#petLevel")).toHaveText("Level 1");
+  await expect(page.locator("#petXp")).toHaveText("0 XP");
+  await expect(page.locator("#goalPercent")).toHaveText("0%");
   await expect(page.locator("#installStatus")).not.toBeEmpty();
   await expect(page.locator("#cacheStatus")).not.toBeEmpty();
   await expect(page.locator("#storageStatus")).not.toBeEmpty();
   await expect(page.locator("#wakeLockToggle")).toBeVisible();
+
+  await goToRoute(page, "focus");
   await expect(page.locator("#breakPrompt")).toContainText(/Look|Stand|Refill|Walk|Stretch|Open/);
   await expect(page.locator("#sessionReviewOverlay")).toBeHidden();
   const firstBreakPrompt = await page.locator("#breakPrompt").textContent();
   await page.getByRole("button", { name: "Next" }).click();
   await expect(page.locator("#breakPrompt")).not.toHaveText(firstBreakPrompt || "");
 
+  await goToRoute(page, "settings");
   await page.locator("#workInput").fill("1");
   await page.locator("#dailyGoalInput").fill("15");
+  await goToRoute(page, "focus");
   await page.locator("#intentionInput").fill("Ship the PWA");
   await expect(page.locator("#timerText")).toHaveText("01:00");
 
@@ -48,8 +63,10 @@ test("runs the timer and persists settings locally", async ({ page }) => {
   await expect(page.locator("#timerText")).not.toHaveText("01:00", { timeout: 2500 });
 
   await page.reload();
+  await goToRoute(page, "settings");
   await expect(page.locator("#workInput")).toHaveValue("1");
   await expect(page.locator("#dailyGoalInput")).toHaveValue("15");
+  await goToRoute(page, "focus");
   await expect(page.locator("#intentionInput")).toHaveValue("Ship the PWA");
 });
 
@@ -61,8 +78,28 @@ test("supports quick focus intention chips", async ({ page }) => {
   await expect(page.getByRole("button", { name: "Writing" })).toHaveAttribute("aria-pressed", "true");
 });
 
+test("uses app-style routed views", async ({ page }) => {
+  await completeOnboarding(page);
+
+  await expect(page.locator("#focus")).toBeVisible();
+  await expect(page.locator("#tasks")).toBeHidden();
+  await expect(page.locator('[data-route-link="focus"]')).toHaveAttribute("aria-current", "page");
+
+  await goToRoute(page, "tasks");
+  await expect(page).toHaveURL(/#\/tasks$/);
+  await expect(page.locator("#focus")).toBeHidden();
+  await expect(page.locator("#tasks")).toBeVisible();
+  await expect(page.locator('[data-route-link="tasks"]')).toHaveAttribute("aria-current", "page");
+  await expect(page.locator("#taskInput")).toBeVisible();
+
+  await page.goto("/#/pets");
+  await expect(page.locator('[data-route="pets"]')).toBeVisible();
+  await expect(page.locator("#petGallery .pet-choice")).toHaveCount(4);
+});
+
 test("integrates local task list with focus sessions", async ({ page }) => {
   await completeOnboarding(page);
+  await goToRoute(page, "tasks");
 
   await expect(page.locator("#taskSummary")).toHaveText("0 open");
   await page.locator("#taskInput").fill("Write launch checklist");
@@ -73,6 +110,7 @@ test("integrates local task list with focus sessions", async ({ page }) => {
   await expect(page.locator("#intentionInput")).toHaveValue("Write launch checklist");
   await expect(page.locator('.task-item[data-active="true"]')).toContainText("Write launch checklist");
 
+  await goToRoute(page, "settings");
   await page.locator("#workInput").fill("1");
   await page.evaluate(() => {
     const stored = JSON.parse(localStorage.getItem("pomo-pet.web.v1"));
@@ -80,9 +118,11 @@ test("integrates local task list with focus sessions", async ({ page }) => {
     localStorage.setItem("pomo-pet.web.v1", JSON.stringify(stored));
   });
   await page.reload();
+  await goToRoute(page, "focus");
   await page.locator("#startPauseButton").click();
   await expect(page.locator("#sessionReviewOverlay")).toBeVisible({ timeout: 3000 });
   await page.locator("#skipReviewButton").click();
+  await goToRoute(page, "tasks");
   await expect(page.locator("#taskList")).toContainText("1m focused");
 
   await page.getByLabel("Complete Write launch checklist").check();
@@ -92,6 +132,7 @@ test("integrates local task list with focus sessions", async ({ page }) => {
 
 test("supports custom pet spritesheets", async ({ page }) => {
   await completeOnboarding(page);
+  await goToRoute(page, "pets");
 
   await expect(page.locator("#petGallery .pet-choice")).toHaveCount(4);
   await page.getByRole("button", { name: /Blueberry/ }).click();
@@ -102,6 +143,7 @@ test("supports custom pet spritesheets", async ({ page }) => {
 
   await page.locator("#customPetInput").fill("https://example.com/pet.webp");
 
+  await goToRoute(page, "focus");
   await expect(page.locator("#petSprite")).toHaveAttribute("aria-label", "Animated custom pet");
   const backgroundImage = await page.locator("#petSprite").evaluate((element) => getComputedStyle(element).backgroundImage);
   expect(backgroundImage).toContain("https://example.com/pet.webp");
@@ -127,9 +169,11 @@ test("resolves Codex Pets share links", async ({ page, context }) => {
   });
 
   await completeOnboarding(page);
+  await goToRoute(page, "pets");
   await page.locator("#customPetInput").fill("https://codex-pets.net/share/clipops");
 
   await expect(page.locator("#customPetStatus")).toHaveText("Loaded ClipOps.");
+  await goToRoute(page, "focus");
   await expect.poll(
     () => page.locator("#petSprite").evaluate((element) => getComputedStyle(element).backgroundImage),
   ).toContain("https://codex-pets.net/assets/pets/v/1780497804791/clipops/spritesheet.webp");
@@ -167,9 +211,11 @@ test("resolves Codex Pets pet pages with manifest sizing", async ({ page, contex
   });
 
   await completeOnboarding(page);
+  await goToRoute(page, "pets");
   await page.locator("#customPetInput").fill("https://codex-pets.net/pets/dario");
 
   await expect(page.locator("#customPetStatus")).toHaveText("Loaded Dario.");
+  await goToRoute(page, "focus");
   const sprite = page.locator("#petSprite");
   await expect(sprite).toHaveCSS("width", "192px");
   await expect(sprite).toHaveCSS("height", "208px");
@@ -229,7 +275,7 @@ test("exposes installable PWA metadata and service worker", async ({ page, conte
 
   const manifest = await page.locator('link[rel="manifest"]').getAttribute("href");
   expect(manifest).toBe("./manifest.webmanifest");
-  await expect(page.locator('script[src="./app.js?v=17"]')).toHaveCount(1);
+  await expect(page.locator('script[src="./app.js?v=18"]')).toHaveCount(1);
 
   const registrationScope = await page.evaluate(async () => {
     const registration = await navigator.serviceWorker.ready;

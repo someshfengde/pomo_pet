@@ -79,6 +79,7 @@ const PETS = {
 };
 
 const INTENTION_PRESETS = ["Deep work", "Study", "Writing", "Coding"];
+const ROUTES = ["focus", "tasks", "pets", "stats", "settings"];
 
 const BREAK_PROMPTS = [
   "Look 20 feet away for 20 seconds.",
@@ -195,6 +196,8 @@ const els = {
   reviewRating: document.querySelector(".review-rating"),
   saveReviewButton: document.querySelector("#saveReviewButton"),
   skipReviewButton: document.querySelector("#skipReviewButton"),
+  routeViews: document.querySelectorAll("[data-route]"),
+  routeLinks: document.querySelectorAll("[data-route-link]"),
 };
 
 function defaultState() {
@@ -568,6 +571,37 @@ function render() {
   renderAchievements({ allFocus, todayFocus, bond });
   renderOnboarding();
   renderSessionReview();
+  renderRoute();
+}
+
+function currentRoute() {
+  const route = window.location.hash.replace(/^#\/?/, "") || "focus";
+  return ROUTES.includes(route) ? route : "focus";
+}
+
+function rawRoute() {
+  return window.location.hash.replace(/^#\/?/, "") || "focus";
+}
+
+function renderRoute() {
+  const route = currentRoute();
+  els.routeViews.forEach((view) => {
+    view.hidden = view.dataset.route !== route;
+  });
+  els.routeLinks.forEach((link) => {
+    const active = link.dataset.routeLink === route;
+    link.setAttribute("aria-current", active ? "page" : "false");
+  });
+  document.body.dataset.activeRoute = route;
+}
+
+function syncRoute() {
+  if (!ROUTES.includes(rawRoute())) {
+    window.location.hash = "#/focus";
+    return;
+  }
+  renderRoute();
+  window.scrollTo({ top: 0, left: 0, behavior: "instant" });
 }
 
 function applyPetSprite(meta, spriteUrl) {
@@ -1472,6 +1506,8 @@ async function registerServiceWorker() {
 }
 
 bindEvents();
+window.addEventListener("hashchange", syncRoute);
+syncRoute();
 render();
 registerServiceWorker();
 ticker = window.setInterval(tick, 250);

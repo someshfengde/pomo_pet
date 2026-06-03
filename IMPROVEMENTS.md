@@ -160,7 +160,7 @@ A prioritized list of improvements to make Pomo Pet a truly delightful, Apple-qu
 ### 20a. Web app / PWA
 - **DONE** — Static installable PWA in `docs/`
 - Includes animated pets, work/break/long-break timer, local-first stats, notification permission flow, install manifest, service worker, offline app shell, and responsive desktop/mobile layout
-- **Enhanced:** Full-screen web workspace with Focus, Session dock, Pet Lab, Stats, and Settings sections
+- **Enhanced:** Hash-routed web workspace with Focus, Tasks, Pets, Stats, and Settings pages
 - **Enhanced:** Built-in local task list; adding/selecting a task updates the current focus intention, and completed sessions credit minutes back to the active task
 - **Enhanced:** Pet gallery panel with safe external discovery link to Codex Pets, custom spritesheet URL support, Codex Pets `/pets/{slug}`, `/share/{slug}`, API URL, and direct spritesheet imports
 - **Fixed:** Web sprite rendering now uses pet metadata frame dimensions instead of hardcoded row offsets

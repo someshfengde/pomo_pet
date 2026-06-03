@@ -1,9 +1,9 @@
-const CACHE_NAME = "pomo-pet-pwa-v17";
+const CACHE_NAME = "pomo-pet-pwa-v18";
 const APP_SHELL = [
   "./",
   "./index.html",
-  "./styles.css?v=17",
-  "./app.js?v=17",
+  "./styles.css?v=18",
+  "./app.js?v=18",
   "./manifest.webmanifest",
   "./assets/icons/icon-192.png",
   "./assets/icons/icon-512.png",

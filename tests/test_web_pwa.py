@@ -13,8 +13,8 @@ def test_pwa_entrypoint_references_runtime_files():
     html = (DOCS / "index.html").read_text()
 
     assert 'rel="manifest"' in html
-    assert "./styles.css?v=17" in html
-    assert "./app.js?v=17" in html
+    assert "./styles.css?v=18" in html
+    assert "./app.js?v=18" in html
     assert "startPauseButton" in html
     assert "notificationToggle" in html
     assert "wakeLockToggle" in html
@@ -33,6 +33,11 @@ def test_pwa_entrypoint_references_runtime_files():
     assert "taskForm" in html
     assert "taskInput" in html
     assert "taskList" in html
+    assert 'data-route="focus"' in html
+    assert 'data-route="tasks"' in html
+    assert 'data-route="pets"' in html
+    assert 'data-route="stats"' in html
+    assert 'data-route="settings"' in html
     assert "dataStatus" in html
     assert "onboardingOverlay" in html
     assert "breakPrompt" in html
@@ -83,8 +88,8 @@ def test_service_worker_precaches_app_shell():
 
     for required_asset in (
         "./index.html",
-        "./styles.css?v=17",
-        "./app.js?v=17",
+        "./styles.css?v=18",
+        "./app.js?v=18",
         "./manifest.webmanifest",
         "./assets/icons/icon-192.png",
         "./assets/icons/icon-512.png",
@@ -95,7 +100,7 @@ def test_service_worker_precaches_app_shell():
 
     assert "self.addEventListener(\"fetch\"" in service_worker
     assert "caches.match" in service_worker
-    assert "pomo-pet-pwa-v17" in service_worker
+    assert "pomo-pet-pwa-v18" in service_worker
     assert 'event.request.mode === "navigate"' in service_worker
     assert '["script", "style", "worker"]' in service_worker
 
@@ -154,6 +159,9 @@ def test_web_app_supports_required_pwa_features():
     assert "selectTask" in app
     assert "creditActiveTask" in app
     assert "normalizeTasks" in app
+    assert "ROUTES" in app
+    assert "renderRoute" in app
+    assert "hashchange" in app
     assert "importStatsFromFile" in app
     assert "shareSummary" in app
     assert "buildSummaryText" in app

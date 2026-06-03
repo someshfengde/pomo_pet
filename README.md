@@ -154,13 +154,13 @@ python3 -m http.server 4173 --directory docs
 # Open http://127.0.0.1:4173
 ```
 
-The web app is organized as a full-screen productivity workspace:
+The web app is organized as a hash-routed, app-style productivity workspace:
 
-- **Focus** — large timer stage, animated pet, progress bar, focus intention, and quick intention chips.
-- **Session dock** — start/reset/skip controls, presets, built-in task list, today's stats, pet bond, and break prompts.
-- **Pet Lab** — bundled variants plus custom Codex Pets URLs and direct spritesheets.
-- **Stats** — weekly focus chart, local insights, achievements, history, session reflections, JSON import/export, and share summary.
-- **Settings** — duration controls, notification toggle, gentle tick, keep-awake, install/offline/storage readiness.
+- `#/focus` — large timer stage, animated pet, session controls, presets, today's stats, focus intention, and break prompts.
+- `#/tasks` — built-in task queue for planning/selecting/completing the next focus target.
+- `#/pets` — Pet Lab with bundled variants plus custom Codex Pets URLs and direct spritesheets.
+- `#/stats` — weekly focus chart, local insights, achievements, history, session reflections, JSON import/export, and share summary.
+- `#/settings` — bond/daily goal, duration controls, notification toggle, gentle tick, keep-awake, install/offline/storage readiness.
 
 Everything is local-first: tasks, settings, stats, reflections, imported pets,
 and achievements stay in browser storage unless you export/share them yourself.
