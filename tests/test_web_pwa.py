@@ -45,9 +45,8 @@ def test_pwa_entrypoint_references_runtime_files():
     assert "sessionReviewOverlay" in html
     assert "sessionReviewInput" in html
     assert "saveReviewButton" in html
-    assert "installStatus" in html
-    assert "cacheStatus" in html
-    assert "storageStatus" in html
+    assert "activeTaskStatus" in html
+    assert "completeActiveTaskButton" in html
     assert "https://codex-pets.net/" in html
 
 
@@ -111,7 +110,6 @@ def test_web_app_supports_required_pwa_features():
     assert "localStorage" in app
     assert "Notification.requestPermission" in app
     assert "navigator.serviceWorker.register" in app
-    assert "beforeinstallprompt" in app
     assert "document.title" in app
     assert "wakeLock" in app
     assert "syncWakeLock" in app
@@ -157,6 +155,7 @@ def test_web_app_supports_required_pwa_features():
     assert "renderTasks" in app
     assert "addTask" in app
     assert "selectTask" in app
+    assert "completeActiveTask" in app
     assert "creditActiveTask" in app
     assert "normalizeTasks" in app
     assert "ROUTES" in app
@@ -166,7 +165,6 @@ def test_web_app_supports_required_pwa_features():
     assert "shareSummary" in app
     assert "buildSummaryText" in app
     assert "completeOnboarding" in app
-    assert "renderReadiness" in app
     assert "onboarded" in app
     assert "BREAK_PROMPTS" in app
     assert "normalizeBreakPromptIndex" in app

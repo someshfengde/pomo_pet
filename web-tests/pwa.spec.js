@@ -38,9 +38,8 @@ test("runs the timer and persists settings locally", async ({ page }) => {
   await expect(page.locator("#petLevel")).toHaveText("Level 1");
   await expect(page.locator("#petXp")).toHaveText("0 XP");
   await expect(page.locator("#goalPercent")).toHaveText("0%");
-  await expect(page.locator("#installStatus")).not.toBeEmpty();
-  await expect(page.locator("#cacheStatus")).not.toBeEmpty();
-  await expect(page.locator("#storageStatus")).not.toBeEmpty();
+  await expect(page.getByRole("heading", { name: "Preferences" })).toBeVisible();
+  await expect(page.locator("#offlineStatus")).toHaveText(/local|session/);
   await expect(page.locator("#wakeLockToggle")).toBeVisible();
 
   await goToRoute(page, "focus");
@@ -109,6 +108,9 @@ test("integrates local task list with focus sessions", async ({ page }) => {
   await expect(page.locator("#taskList")).toContainText("Write launch checklist");
   await expect(page.locator("#intentionInput")).toHaveValue("Write launch checklist");
   await expect(page.locator('.task-item[data-active="true"]')).toContainText("Write launch checklist");
+  await goToRoute(page, "focus");
+  await expect(page.locator("#activeTaskStatus")).toHaveText("Task: Write launch checklist");
+  await expect(page.getByRole("button", { name: "Mark done" })).toBeEnabled();
 
   await goToRoute(page, "settings");
   await page.locator("#workInput").fill("1");
@@ -128,6 +130,24 @@ test("integrates local task list with focus sessions", async ({ page }) => {
   await page.getByLabel("Complete Write launch checklist").check();
   await expect(page.locator("#taskSummary")).toHaveText("0 open");
   await expect(page.locator('.task-item[data-completed="true"]')).toContainText("Write launch checklist");
+});
+
+test("can complete the active task from the focus view", async ({ page }) => {
+  await completeOnboarding(page);
+  await goToRoute(page, "tasks");
+
+  await page.locator("#taskInput").fill("Finish focus UI");
+  await page.getByRole("button", { name: "Add" }).click();
+  await goToRoute(page, "focus");
+
+  await expect(page.locator("#activeTaskStatus")).toHaveText("Task: Finish focus UI");
+  await page.getByRole("button", { name: "Mark done" }).click();
+  await expect(page.locator("#activeTaskStatus")).toHaveText("No task selected");
+  await expect(page.getByRole("button", { name: "Mark done" })).toBeDisabled();
+
+  await goToRoute(page, "tasks");
+  await expect(page.locator("#taskSummary")).toHaveText("0 open");
+  await expect(page.locator('.task-item[data-completed="true"]')).toContainText("Finish focus UI");
 });
 
 test("supports custom pet spritesheets", async ({ page }) => {

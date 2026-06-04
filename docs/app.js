@@ -118,7 +118,6 @@ const MESSAGES = {
 const state = loadState();
 let ticker = 0;
 let lastTickAt = Date.now();
-let deferredInstallPrompt = null;
 let audioContext = null;
 let wakeLock = null;
 let wakeLockRequest = null;
@@ -127,6 +126,7 @@ let reviewEnergy = 0;
 let customPetResolveTimer = 0;
 
 const els = {
+  timerPanel: document.querySelector(".timer-panel"),
   petSprite: document.querySelector("#petSprite"),
   petGallery: document.querySelector("#petGallery"),
   customPetInput: document.querySelector("#customPetInput"),
@@ -137,6 +137,8 @@ const els = {
   progressFill: document.querySelector("#progressFill"),
   petMessage: document.querySelector("#petMessage"),
   intentionInput: document.querySelector("#intentionInput"),
+  activeTaskStatus: document.querySelector("#activeTaskStatus"),
+  completeActiveTaskButton: document.querySelector("#completeActiveTaskButton"),
   intentionChips: document.querySelector("#intentionChips"),
   startPauseButton: document.querySelector("#startPauseButton"),
   resetButton: document.querySelector("#resetButton"),
@@ -176,9 +178,6 @@ const els = {
   tickToggle: document.querySelector("#tickToggle"),
   wakeLockToggle: document.querySelector("#wakeLockToggle"),
   offlineStatus: document.querySelector("#offlineStatus"),
-  installStatus: document.querySelector("#installStatus"),
-  cacheStatus: document.querySelector("#cacheStatus"),
-  storageStatus: document.querySelector("#storageStatus"),
   historyList: document.querySelector("#historyList"),
   clearStatsButton: document.querySelector("#clearStatsButton"),
   exportStatsButton: document.querySelector("#exportStatsButton"),
@@ -186,7 +185,6 @@ const els = {
   importStatsInput: document.querySelector("#importStatsInput"),
   shareSummaryButton: document.querySelector("#shareSummaryButton"),
   dataStatus: document.querySelector("#dataStatus"),
-  installButton: document.querySelector("#installButton"),
   onboardingOverlay: document.querySelector("#onboardingOverlay"),
   onboardingIntentionInput: document.querySelector("#onboardingIntentionInput"),
   onboardingPresetButtons: document.querySelector("#onboardingPresetButtons"),
@@ -394,6 +392,11 @@ function currentPet() {
   return PETS[state.settings.pet] || PETS.avocado;
 }
 
+function petVisualFilter(filterValue) {
+  const colorFilter = filterValue && filterValue !== "none" ? filterValue : "";
+  return [colorFilter, "drop-shadow(0 20px 34px rgba(0, 0, 0, 0.24))"].filter(Boolean).join(" ");
+}
+
 function renderIntentionChips() {
   els.intentionChips.innerHTML = "";
   INTENTION_PRESETS.forEach((label) => {
@@ -442,7 +445,7 @@ function renderTasks() {
         <strong>${escapeHtml(task.title)}</strong>
         <small>${task.focusMinutes ? `${task.focusMinutes}m focused` : "Ready for focus"}</small>
       </button>
-      <button class="task-delete" type="button" aria-label="Delete ${escapeAttribute(task.title)}">×</button>
+      <button class="task-delete" type="button" aria-label="Delete ${escapeAttribute(task.title)}">Remove</button>
     `;
     item.querySelector(".task-check input").addEventListener("change", (event) => toggleTask(task.id, event.target.checked));
     item.querySelector(".task-select").addEventListener("click", () => selectTask(task.id));
@@ -495,6 +498,16 @@ function toggleTask(taskId, completed) {
   render();
 }
 
+function activeTask() {
+  return state.stats.tasks.find((task) => task.id === state.settings.activeTaskId && !task.completed) || null;
+}
+
+function completeActiveTask() {
+  const task = activeTask();
+  if (!task) return;
+  toggleTask(task.id, true);
+}
+
 function deleteTask(taskId) {
   state.stats.tasks = state.stats.tasks.filter((task) => task.id !== taskId);
   if (state.settings.activeTaskId === taskId) {
@@ -507,6 +520,7 @@ function deleteTask(taskId) {
 function render() {
   const total = Math.max(durationForPhase(), 1);
   const progress = Math.max(0, Math.min(1, state.timer.remaining / total));
+  const elapsedProgress = 1 - progress;
   const todaySessions = sessionsToday();
   const todayFocus = todaySessions.reduce((sum, session) => sum + session.focusMinutes, 0);
   const allFocus = state.stats.sessions.reduce((sum, session) => sum + session.focusMinutes, 0);
@@ -518,11 +532,17 @@ function render() {
   const petMeta = customSprite ? state.settings.customPetMeta || DEFAULT_PET_META : pet.meta || DEFAULT_PET_META;
 
   els.timerText.textContent = formatTime(state.timer.remaining);
+  els.timerPanel.dataset.phase = state.timer.phase;
+  els.timerPanel.dataset.running = String(state.timer.running);
+  els.timerPanel.style.setProperty("--session-progress", `${elapsedProgress * 100}%`);
   els.phaseLabel.textContent = phaseName();
   els.sessionLabel.textContent = `${state.timer.sessionsCompleted} sessions`;
   els.progressFill.style.width = `${progress * 100}%`;
   els.petMessage.textContent = state.timer.message;
   els.intentionInput.value = state.settings.currentIntention;
+  const currentTask = activeTask();
+  els.activeTaskStatus.textContent = currentTask ? `Task: ${currentTask.title}` : "No task selected";
+  els.completeActiveTaskButton.disabled = !currentTask;
   els.startPauseButton.textContent = state.timer.running ? "Pause" : "Start";
   els.presetSummary.textContent = `${state.settings.work} / ${state.settings.break}`;
   els.workInput.value = state.settings.work;
@@ -547,13 +567,12 @@ function render() {
   els.wakeLockToggle.checked = state.settings.wakeLock;
   els.customPetInput.value = state.settings.customPetSourceUrl || state.settings.customPetUrl;
   els.customPetStatus.textContent = customPetStatusText(customSprite);
-  els.offlineStatus.textContent = navigator.onLine ? "online" : "offline-ready";
+  els.offlineStatus.textContent = storage.isPersistent() ? "local" : "session";
   updateDocumentTitle();
   syncWakeLock();
-  renderReadiness();
 
   els.petSprite.className = "pet-sprite";
-  els.petSprite.style.filter = customSprite ? "none" : pet.filter;
+  els.petSprite.style.filter = petVisualFilter(customSprite ? "" : pet.filter);
   els.petSprite.setAttribute("aria-label", `Animated ${customSprite ? "custom" : pet.label.toLowerCase()} pet`);
   applyPetSprite(petMeta, sprite);
   if (!state.timer.running) els.petSprite.classList.add("is-paused");
@@ -639,13 +658,6 @@ function spriteAnimationName() {
 
 function maxAnimationFrames(meta) {
   return Math.max(...Object.values(meta.animations || DEFAULT_PET_META.animations).map((animation) => Number(animation.frames) || 1), 1);
-}
-
-function renderReadiness() {
-  const installed = window.matchMedia?.("(display-mode: standalone)")?.matches || navigator.standalone;
-  els.installStatus.textContent = installed ? "installed" : deferredInstallPrompt ? "ready" : "browser";
-  els.cacheStatus.textContent = "serviceWorker" in navigator ? "ready" : "browser";
-  els.storageStatus.textContent = storage.isPersistent() ? "local" : "session";
 }
 
 function renderOnboarding() {
@@ -1224,6 +1236,7 @@ function bindEvents() {
   els.importStatsInput.addEventListener("change", () => importStatsFromFile(els.importStatsInput.files?.[0]));
   els.shareSummaryButton.addEventListener("click", shareSummary);
   els.nextBreakPromptButton.addEventListener("click", nextBreakPrompt);
+  els.completeActiveTaskButton.addEventListener("click", completeActiveTask);
   els.reviewRating.addEventListener("click", (event) => {
     const button = event.target.closest("button[data-energy]");
     if (!button) return;
@@ -1233,7 +1246,6 @@ function bindEvents() {
   els.saveReviewButton.addEventListener("click", saveSessionReview);
   els.skipReviewButton.addEventListener("click", closeSessionReview);
   els.notificationToggle.addEventListener("change", requestNotifications);
-  els.installButton.addEventListener("click", installApp);
   window.addEventListener("online", render);
   window.addEventListener("offline", render);
   document.addEventListener("visibilitychange", () => {
@@ -1242,12 +1254,6 @@ function bindEvents() {
     } else {
       releaseWakeLock();
     }
-  });
-  window.addEventListener("beforeinstallprompt", (event) => {
-    event.preventDefault();
-    deferredInstallPrompt = event;
-    els.installButton.hidden = false;
-    renderReadiness();
   });
 }
 
@@ -1483,14 +1489,6 @@ async function requestNotifications() {
   }
   saveState();
   render();
-}
-
-async function installApp() {
-  if (!deferredInstallPrompt) return;
-  deferredInstallPrompt.prompt();
-  await deferredInstallPrompt.userChoice;
-  deferredInstallPrompt = null;
-  els.installButton.hidden = true;
 }
 
 async function registerServiceWorker() {
