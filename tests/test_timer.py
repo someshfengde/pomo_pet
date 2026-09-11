@@ -131,7 +131,7 @@ class TestSkipPhase:
         timer.skip_phase()  # break -> work
         assert timer.phase == TimerPhase.WORK
         assert timer.remaining == 1 * 60
-        assert timer.sessions_completed == 1
+        assert timer.sessions_completed == 0
 
     def test_skip_unpauses(self):
         timer = PomodoroTimer()
@@ -211,3 +211,42 @@ class TestTimerFormatting:
         timer = PomodoroTimer(work_minutes=25)
         timer.tick()
         assert timer.format_remaining() == "24:59"
+
+class TestTimerClock:
+    def test_paused_time_is_never_charged(self):
+        from pomo_pet.core.timer import TimerClock
+        now = [0.0]
+        timer = PomodoroTimer(work_minutes=1)
+        clock = TimerClock(timer, lambda: now[0])
+        now[0] = 5
+        clock.pulse()
+        assert timer.remaining == 55
+        timer.paused = True
+        now[0] = 105
+        clock.pulse()
+        clock.rebase()
+        timer.paused = False
+        now[0] = 106
+        clock.pulse()
+        assert timer.remaining == 54
+
+    def test_sleep_stops_at_one_phase_boundary(self):
+        from pomo_pet.core.timer import TimerClock
+        now = [0.0]
+        timer = PomodoroTimer(work_minutes=1, break_minutes=1)
+        clock = TimerClock(timer, lambda: now[0])
+        now[0] = 3600
+        clock.pulse()
+        assert timer.sessions_completed == 1
+        assert timer.phase == TimerPhase.BREAK
+        assert timer.remaining == 60
+        assert timer.paused
+        now[0] = 7200
+        clock.pulse()
+        assert timer.sessions_completed == 1
+
+    def test_skip_never_earns_a_session_or_long_break(self):
+        timer = PomodoroTimer(long_break_interval=1)
+        timer.skip_phase()
+        assert timer.sessions_completed == 0
+        assert timer.phase == TimerPhase.BREAK

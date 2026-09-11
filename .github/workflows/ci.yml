@@ -1,6 +1,7 @@
 name: CI
 
 on:
+  workflow_dispatch:
   push:
     branches: [main]
   pull_request:
@@ -57,10 +58,17 @@ jobs:
           node-version: "22"
 
       - name: Install web test dependencies
-        run: npm install
+        run: npm ci
 
       - name: Install Playwright browser
-        run: npx playwright install --with-deps chromium
+        run: npx playwright install --with-deps chromium firefox webkit
 
       - name: Run web E2E tests
-        run: npm run test:web -- --project=chromium
+        run: npm run test:web
+
+      - name: Upload browser failure traces
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-test-results
+          path: test-results/

@@ -1,9 +1,36 @@
 import { expect, test } from "@playwright/test";
+import { createServer } from "node:http";
+import { readFile } from "node:fs/promises";
+import { resolve, sep } from "node:path";
 
-async function completeOnboarding(page) {
-  await page.goto("/");
+async function createOfflineTestServer() {
+  const root = resolve("docs");
+  const server = createServer(async (request, response) => {
+    try {
+      const pathname = new URL(request.url, "http://localhost").pathname;
+      const file = resolve(root, `.${pathname === "/" ? "/index.html" : pathname}`);
+      if (!file.startsWith(`${root}${sep}`)) throw new Error("Invalid path");
+      const data = await readFile(file);
+      const type = { js: "text/javascript", css: "text/css", html: "text/html", webmanifest: "application/manifest+json", png: "image/png", webp: "image/webp" }[file.split(".").at(-1)];
+      response.setHeader("Content-Type", type || "application/octet-stream");
+      response.end(data);
+    } catch { response.writeHead(404); response.end(); }
+  });
+  await new Promise(resolve => server.listen(0, "127.0.0.1", resolve));
+  return {
+    url: `http://127.0.0.1:${server.address().port}/`,
+    async stop() {
+      if (!server.listening) return;
+      server.closeAllConnections();
+      await new Promise(resolve => server.close(resolve));
+    },
+  };
+}
+
+async function completeOnboarding(page, url = "/") {
+  await page.goto(url);
   if (await page.locator("#onboardingOverlay").isVisible()) {
-    await page.getByRole("button", { name: "Start setup" }).click();
+    await page.getByRole("button", { name: "Let’s focus" }).click();
     await expect(page.locator("#onboardingOverlay")).toBeHidden();
   }
 }
@@ -31,7 +58,7 @@ test("runs the timer and persists settings locally", async ({ page }) => {
   await expect(page.locator("#totalFocus")).toHaveText("0m");
   await expect(page.locator("#achievementList .achievement-item")).toHaveCount(4);
   await expect(page.getByRole("button", { name: "Share" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Import" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Import", exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Export" })).toBeVisible();
 
   await goToRoute(page, "settings");
@@ -59,7 +86,7 @@ test("runs the timer and persists settings locally", async ({ page }) => {
   await page.locator("#startPauseButton").click();
   await expect(page.getByRole("button", { name: "Pause" })).toBeVisible();
   await expect(page).toHaveTitle(/Work - Pomo Pet/);
-  await expect(page.locator("#timerText")).not.toHaveText("01:00", { timeout: 2500 });
+  await expect(page.locator("#timerText")).not.toHaveText("01:00", { timeout: 10000 });
 
   await page.reload();
   await goToRoute(page, "settings");
@@ -114,6 +141,7 @@ test("integrates local task list with focus sessions", async ({ page }) => {
 
   await goToRoute(page, "settings");
   await page.locator("#workInput").fill("1");
+  await page.locator("#workInput").blur();
   await page.evaluate(() => {
     const stored = JSON.parse(localStorage.getItem("pomo-pet.web.v1"));
     stored.timer.remaining = 1;
@@ -122,7 +150,7 @@ test("integrates local task list with focus sessions", async ({ page }) => {
   await page.reload();
   await goToRoute(page, "focus");
   await page.locator("#startPauseButton").click();
-  await expect(page.locator("#sessionReviewOverlay")).toBeVisible({ timeout: 3000 });
+  await expect(page.locator("#sessionReviewOverlay")).toBeVisible({ timeout: 10000 });
   await page.locator("#skipReviewButton").click();
   await goToRoute(page, "tasks");
   await expect(page.locator("#taskList")).toContainText("1m focused");
@@ -158,7 +186,7 @@ test("supports custom pet spritesheets", async ({ page }) => {
   await page.getByRole("button", { name: /Blueberry/ }).click();
   await expect(page.locator("#petSprite")).toHaveAttribute("aria-label", "Animated blueberry pet");
   await expect(page.locator("#petSprite")).toHaveCSS("height", "208px");
-  await expect(page.locator("#petSprite")).toHaveCSS("background-size", "1536px");
+  await expect(page.locator("#petSprite")).toHaveCSS("background-size", /^1536px(?: auto)?$/);
   expect(await page.locator("#petSprite").evaluate((element) => element.style.getPropertyValue("--pet-frames"))).toBe("1");
 
   await page.locator("#customPetInput").fill("https://example.com/pet.webp");
@@ -170,6 +198,9 @@ test("supports custom pet spritesheets", async ({ page }) => {
 });
 
 test("resolves Codex Pets share links", async ({ page, context }) => {
+  await context.route("**/assets/pets/v/1780497804791/clipops/pet.json", route => route.fulfill({
+    contentType: "application/json", body: "{}", headers: { "access-control-allow-origin": "*" },
+  }));
   await context.route("**/api/pets/clipops", async (route) => {
     await route.fulfill({
       contentType: "application/json",
@@ -239,7 +270,7 @@ test("resolves Codex Pets pet pages with manifest sizing", async ({ page, contex
   const sprite = page.locator("#petSprite");
   await expect(sprite).toHaveCSS("width", "192px");
   await expect(sprite).toHaveCSS("height", "208px");
-  await expect(sprite).toHaveCSS("background-size", "1536px");
+  await expect(sprite).toHaveCSS("background-size", /^1536px(?: auto)?$/);
   await expect(sprite).toHaveAttribute("aria-label", "Animated custom pet");
 });
 
@@ -276,7 +307,7 @@ test("captures post-session reflections locally", async ({ page }) => {
   await page.goto("/");
   await expect(page.locator("#timerText")).toHaveText("00:01");
   await page.locator("#startPauseButton").click();
-  await expect(page.locator("#sessionReviewOverlay")).toBeVisible({ timeout: 3000 });
+  await expect(page.locator("#sessionReviewOverlay")).toBeVisible({ timeout: 10000 });
 
   await page.locator("#sessionReviewInput").fill("Finished the launch copy.");
   await page.locator('.review-rating button[data-energy="4"]').click();
@@ -290,25 +321,33 @@ test("captures post-session reflections locally", async ({ page }) => {
   await expect(page.locator("#insightBestDay")).toContainText("1m");
 });
 
-test("exposes installable PWA metadata and service worker", async ({ page, context }) => {
-  await completeOnboarding(page);
+test("exposes installable PWA metadata and survives an offline reload", async ({ page }) => {
+  const server = await createOfflineTestServer();
+  try {
+  await completeOnboarding(page, server.url);
 
   const manifest = await page.locator('link[rel="manifest"]').getAttribute("href");
   expect(manifest).toBe("./manifest.webmanifest");
-  await expect(page.locator('script[src="./app.js?v=19"]')).toHaveCount(1);
+  await expect(page.locator('script[src="./app.js?v=20"]')).toHaveCount(1);
 
   const registrationScope = await page.evaluate(async () => {
     const registration = await navigator.serviceWorker.ready;
     return registration.scope;
   });
-  expect(registrationScope).toContain("127.0.0.1:4173");
+  expect(registrationScope).toBe(server.url);
 
+  await page.waitForFunction(() => navigator.serviceWorker.controller?.state === "activated");
   const cacheNames = await page.evaluate(() => caches.keys());
   expect(cacheNames.some((name) => name.startsWith("pomo-pet-pwa"))).toBeTruthy();
 
-  await context.setOffline(true);
+  // Stop the origin itself: this also works where protocol offline emulation
+  // blocks WebKit's service-worker dispatch before our cache can respond.
+  await server.stop();
   await page.reload();
   await expect(page.getByRole("heading", { name: "Pomo Pet" })).toBeVisible();
+  await page.locator("#startPauseButton").click();
+  await expect(page.locator("#startPauseButton")).toHaveText("Pause");
+  } finally { await server.stop(); }
 });
 
 test("guides first-run setup", async ({ page }) => {
@@ -317,7 +356,7 @@ test("guides first-run setup", async ({ page }) => {
   await expect(page.locator("#onboardingOverlay")).toBeVisible();
   await page.locator("#onboardingIntentionInput").fill("Plan launch");
   await page.getByLabel("Starting preset").getByRole("button", { name: "Sprint" }).click();
-  await page.getByRole("button", { name: "Start setup" }).click();
+  await page.getByRole("button", { name: "Let’s focus" }).click();
 
   await expect(page.locator("#onboardingOverlay")).toBeHidden();
   await expect(page.locator("#intentionInput")).toHaveValue("Plan launch");

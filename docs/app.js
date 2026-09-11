@@ -3,7 +3,7 @@ const memoryStore = new Map();
 const storage = {
   getItem(key) {
     try {
-      return window.localStorage?.getItem(key) ?? memoryStore.get(key) ?? null;
+      return memoryStore.get(key) ?? window.localStorage?.getItem(key) ?? null;
     } catch {
       return memoryStore.get(key) ?? null;
     }
@@ -21,9 +21,13 @@ const storage = {
   setItem(key, value) {
     memoryStore.set(key, value);
     try {
-      window.localStorage?.setItem(key, value);
+      if (!window.localStorage) return false;
+      window.localStorage.setItem(key, value);
+      memoryStore.delete(key);
+      return true;
     } catch {
-      // Restricted browsers can disable localStorage; keep the in-memory app usable.
+      // Keep unsaved data available for export even when quota is exhausted.
+      return false;
     }
   },
 };
@@ -117,7 +121,13 @@ const MESSAGES = {
 
 const state = loadState();
 let ticker = 0;
-let lastTickAt = Date.now();
+let hasControl = !("locks" in navigator);
+let releaseControl = null;
+let controlRequest = null;
+let petRequestVersion = 0;
+let activeDialog = null;
+let dialogReturnFocus = null;
+let renderedDay = todayKey();
 let audioContext = null;
 let wakeLock = null;
 let wakeLockRequest = null;
@@ -225,6 +235,10 @@ function defaultState() {
       phase: "work",
       remaining: preset.work * 60,
       running: false,
+      deadline: null,
+      duration: preset.work * 60,
+      started: false,
+      context: null,
       sessionsCompleted: 0,
       message: MESSAGES.work[0],
     },
@@ -245,20 +259,46 @@ function loadState() {
   }
 }
 
+function bounded(value, fallback, min, max) {
+  return typeof value === "number" && Number.isFinite(value)
+    ? Math.max(min, Math.min(max, Math.round(value))) : fallback;
+}
+
 function mergeState(base, saved) {
+  if (!saved || typeof saved !== "object") return base;
+  const settings = { ...base.settings, ...sanitizeImportedSettings(saved.settings || {}) };
+  const raw = saved.timer || {};
+  const phase = ["work", "break", "long_break"].includes(raw.phase) ? raw.phase : "work";
+  const configuredDuration = (phase === "work" ? settings.work : phase === "break" ? settings.break : settings.longBreak) * 60;
+  const duration = bounded(raw.duration, configuredDuration, 60, 10800);
+  const remaining = typeof raw.remaining === "number" && raw.remaining > 0
+    ? bounded(raw.remaining, duration, 0, duration) : duration;
+  const context = raw.context && typeof raw.context === "object" ? {
+    intention: String(raw.context.intention || "").slice(0, 80),
+    taskId: String(raw.context.taskId || ""),
+    preset: String(raw.context.preset || "custom").slice(0, 40),
+  } : null;
   return {
-    settings: { ...base.settings, ...saved.settings },
-    timer: { ...base.timer, ...saved.timer, running: false },
-    stats: {
-      ...base.stats,
-      ...saved.stats,
-      tasks: normalizeTasks(saved.stats?.tasks || []),
+    settings,
+    timer: {
+      phase, duration, remaining, context,
+      started: raw.started === true || remaining < duration,
+      running: raw.running === true && Number.isFinite(raw.deadline) && raw.deadline > 0,
+      deadline: Number.isFinite(raw.deadline) ? raw.deadline : null,
+      sessionsCompleted: bounded(raw.sessionsCompleted, 0, 0, 1000000),
+      message: typeof raw.message === "string" ? raw.message.slice(0, 220) : MESSAGES[phase][0],
     },
+    stats: normalizeImportedStats(saved.stats || {}),
   };
 }
 
 function saveState() {
-  storage.setItem(STORAGE_KEY, JSON.stringify(state));
+  const persisted = storage.setItem(STORAGE_KEY, JSON.stringify(state));
+  if (!persisted) {
+    const notice = document.querySelector("#storageNotice");
+    notice.hidden = false;
+    notice.textContent = "Your latest changes could not be saved. Export your work before closing this tab.";
+  }
 }
 
 function durationForPhase(phase = state.timer.phase) {
@@ -278,8 +318,8 @@ function formatTime(seconds) {
   return `${minutes}:${secs}`;
 }
 
-function todayKey() {
-  return new Date().toISOString().slice(0, 10);
+function todayKey(date = new Date()) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
 
 function sessionsToday() {
@@ -293,9 +333,9 @@ function computeStreak() {
 
   let streak = 0;
   const cursor = new Date();
+  if (days[0] !== todayKey(cursor)) cursor.setDate(cursor.getDate() - 1);
   for (const day of days) {
-    const expected = cursor.toISOString().slice(0, 10);
-    if (day !== expected) break;
+    if (day !== todayKey(cursor)) break;
     streak += 1;
     cursor.setDate(cursor.getDate() - 1);
   }
@@ -353,7 +393,8 @@ function renderOnboardingPresets() {
         interval: preset.interval,
       };
       state.timer.phase = "work";
-      state.timer.remaining = durationForPhase("work");
+      state.timer.duration = durationForPhase("work");
+      state.timer.remaining = state.timer.duration;
       saveState();
       render();
     });
@@ -376,6 +417,8 @@ function renderPetGallery() {
       </span>
     `;
     button.addEventListener("click", () => {
+      petRequestVersion += 1;
+      window.clearTimeout(customPetResolveTimer);
       state.settings.pet = id;
       state.settings.customPetUrl = "";
       state.settings.customPetSourceUrl = "";
@@ -405,6 +448,7 @@ function renderIntentionChips() {
     button.textContent = label;
     button.setAttribute("aria-pressed", String(state.settings.currentIntention === label));
     button.addEventListener("click", () => {
+      state.settings.activeTaskId = "";
       state.settings.currentIntention = label;
       saveState();
       render();
@@ -465,7 +509,7 @@ function addTask(title) {
     createdAt: new Date().toISOString(),
     completedAt: "",
   };
-  state.stats.tasks = [task, ...normalizeTasks(state.stats.tasks)].slice(0, 30);
+  state.stats.tasks = [task, ...normalizeTasks(state.stats.tasks)];
   selectTask(task.id, { persist: false });
   els.taskInput.value = "";
   saveState();
@@ -509,6 +553,7 @@ function completeActiveTask() {
 }
 
 function deleteTask(taskId) {
+  if (!window.confirm("Remove this task? Its completed sessions will stay in history.")) return;
   state.stats.tasks = state.stats.tasks.filter((task) => task.id !== taskId);
   if (state.settings.activeTaskId === taskId) {
     state.settings.activeTaskId = "";
@@ -517,8 +562,26 @@ function deleteTask(taskId) {
   render();
 }
 
+function setInputValue(input, value) {
+  if (document.activeElement !== input) input.value = value;
+}
+
+function renderClock() {
+  const progress = Math.max(0, Math.min(1, state.timer.remaining / state.timer.duration));
+  els.timerText.textContent = formatTime(state.timer.remaining);
+  els.progressFill.style.width = `${(1 - progress) * 100}%`;
+  els.timerPanel.style.setProperty("--session-progress", `${(1 - progress) * 100}%`);
+  const shortcut = document.querySelector("#timerShortcut");
+  shortcut.textContent = `${formatTime(state.timer.remaining)} · ${phaseName()}${state.timer.started && !state.timer.running ? " paused" : ""}`;
+  shortcut.hidden = currentRoute() === "focus";
+  document.querySelector("#timerHint").textContent = state.timer.running
+    ? "Keep going. Your timer continues in the background."
+    : state.timer.started ? "Paused. Pick up where you left off." : "Ready when you are.";
+  updateDocumentTitle();
+}
+
 function render() {
-  const total = Math.max(durationForPhase(), 1);
+  const total = Math.max(state.timer.duration, 1);
   const progress = Math.max(0, Math.min(1, state.timer.remaining / total));
   const elapsedProgress = 1 - progress;
   const todaySessions = sessionsToday();
@@ -537,18 +600,18 @@ function render() {
   els.timerPanel.style.setProperty("--session-progress", `${elapsedProgress * 100}%`);
   els.phaseLabel.textContent = phaseName();
   els.sessionLabel.textContent = `${state.timer.sessionsCompleted} sessions`;
-  els.progressFill.style.width = `${progress * 100}%`;
+  els.progressFill.style.width = `${elapsedProgress * 100}%`;
   els.petMessage.textContent = state.timer.message;
-  els.intentionInput.value = state.settings.currentIntention;
+  setInputValue(els.intentionInput, state.settings.currentIntention);
   const currentTask = activeTask();
   els.activeTaskStatus.textContent = currentTask ? `Task: ${currentTask.title}` : "No task selected";
   els.completeActiveTaskButton.disabled = !currentTask;
-  els.startPauseButton.textContent = state.timer.running ? "Pause" : "Start";
+  els.startPauseButton.textContent = state.timer.running ? "Pause" : state.timer.started ? "Resume" : "Start";
   els.presetSummary.textContent = `${state.settings.work} / ${state.settings.break}`;
-  els.workInput.value = state.settings.work;
-  els.breakInput.value = state.settings.break;
-  els.longBreakInput.value = state.settings.longBreak;
-  els.intervalInput.value = state.settings.interval;
+  setInputValue(els.workInput, state.settings.work);
+  setInputValue(els.breakInput, state.settings.break);
+  setInputValue(els.longBreakInput, state.settings.longBreak);
+  setInputValue(els.intervalInput, state.settings.interval);
   els.todayDate.textContent = new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric" }).format(new Date());
   els.todaySessions.textContent = todaySessions.length;
   els.todayFocus.textContent = `${todayFocus}m`;
@@ -559,13 +622,13 @@ function render() {
   els.petXp.textContent = `${allFocus} XP`;
   els.goalPercent.textContent = `${bond.goalPercent}%`;
   els.goalPercent.parentElement.style.setProperty("--goal-progress", `${bond.goalPercent}%`);
-  els.dailyGoalInput.value = state.settings.dailyGoalMinutes;
+  setInputValue(els.dailyGoalInput, state.settings.dailyGoalMinutes);
   els.breakPrompt.textContent = currentBreakPrompt();
   els.breakPromptSection.dataset.active = String(state.timer.phase !== "work");
   els.notificationToggle.checked = state.settings.notifications;
   els.tickToggle.checked = state.settings.tick;
   els.wakeLockToggle.checked = state.settings.wakeLock;
-  els.customPetInput.value = state.settings.customPetSourceUrl || state.settings.customPetUrl;
+  setInputValue(els.customPetInput, state.settings.customPetSourceUrl || state.settings.customPetUrl);
   els.customPetStatus.textContent = customPetStatusText(customSprite);
   els.offlineStatus.textContent = storage.isPersistent() ? "local" : "session";
   updateDocumentTitle();
@@ -591,6 +654,9 @@ function render() {
   renderOnboarding();
   renderSessionReview();
   renderRoute();
+  renderClock();
+  syncDialog();
+  if (!hasControl) document.querySelectorAll("button, input, textarea").forEach((control) => { control.disabled = true; });
 }
 
 function currentRoute() {
@@ -612,6 +678,7 @@ function renderRoute() {
     link.setAttribute("aria-current", active ? "page" : "false");
   });
   document.body.dataset.activeRoute = route;
+  renderClock();
 }
 
 function syncRoute() {
@@ -662,7 +729,7 @@ function maxAnimationFrames(meta) {
 
 function renderOnboarding() {
   els.onboardingOverlay.hidden = state.settings.onboarded;
-  els.onboardingIntentionInput.value = state.settings.currentIntention;
+  setInputValue(els.onboardingIntentionInput, state.settings.currentIntention);
 }
 
 function renderSessionReview() {
@@ -713,7 +780,7 @@ function renderHistory() {
     const intention = session.intention ? ` — ${session.intention}` : "";
     const energy = session.energy ? ` — ${session.energy}/5 energy` : "";
     const reflection = session.reflection ? ` — ${session.reflection}` : "";
-    item.textContent = `${session.focusMinutes}m ${session.preset} session at ${session.time}${intention}${energy}${reflection}`;
+    item.textContent = `${session.date} · ${session.focusMinutes}m ${session.preset} session at ${session.time}${intention}${energy}${reflection}`;
     els.historyList.append(item);
   });
 }
@@ -764,7 +831,7 @@ function renderWeekChart() {
     const item = document.createElement("div");
     item.className = "week-bar";
     item.innerHTML = `
-      <span class="week-fill" style="height: ${Math.max(8, (value / max) * 100)}%"></span>
+      <span class="week-fill" style="height: ${value ? Math.max(4, (value / max) * 100) : 0}%"></span>
       <strong>${day.label}</strong>
       <small>${value}m</small>
     `;
@@ -815,13 +882,14 @@ function lastNDays(count, offsetDays = 0) {
     const date = new Date();
     date.setDate(date.getDate() - offsetDays - (count - 1 - index));
     return {
-      key: date.toISOString().slice(0, 10),
+      key: todayKey(date),
       label: formatter.format(date),
     };
   });
 }
 
 function applyPreset(id) {
+  if (state.timer.started && !window.confirm("Change preset and reset the current session?")) return;
   const preset = PRESETS[id];
   state.settings = {
     ...state.settings,
@@ -836,33 +904,56 @@ function applyPreset(id) {
 
 function updateSetting(key, value) {
   state.settings[key] = value;
-  if (!state.timer.running) {
-    state.timer.remaining = durationForPhase();
+  if (["work", "break", "longBreak", "interval"].includes(key)) {
+    state.settings.preset = "custom";
+    if (!state.timer.started) {
+      state.timer.duration = durationForPhase();
+      state.timer.remaining = state.timer.duration;
+    }
   }
   saveState();
   render();
 }
 
 function startPause() {
-  state.timer.running = !state.timer.running;
-  lastTickAt = Date.now();
   if (state.timer.running) {
+    tick();
+    if (!state.timer.running) return;
+    state.timer.running = false;
+    state.timer.deadline = null;
+  } else {
+    if (!state.timer.started) {
+      state.timer.context = {
+        taskId: state.settings.activeTaskId,
+        intention: state.settings.currentIntention,
+        preset: state.settings.preset,
+      };
+    }
+    state.timer.started = true;
+    state.timer.running = true;
+    state.timer.deadline = Date.now() + state.timer.remaining * 1000;
     unlockAudio();
   }
   saveState();
   render();
 }
 
-function resetTimer() {
+function resetTimer({ confirm = false } = {}) {
+  if (confirm && state.timer.started && !window.confirm("Reset this session? Unfinished focus time will not be counted.")) return;
   state.timer.running = false;
+  state.timer.deadline = null;
+  state.timer.started = false;
+  state.timer.context = null;
   state.timer.phase = "work";
-  state.timer.remaining = durationForPhase("work");
+  state.timer.duration = durationForPhase("work");
+  state.timer.remaining = state.timer.duration;
   state.timer.message = pickMessage("work");
   saveState();
   render();
 }
 
 function skipPhase() {
+  if (state.timer.started && !window.confirm("Skip this phase? Unfinished focus time will not be counted.")) return;
   completePhase({ skipped: true });
 }
 
@@ -870,7 +961,7 @@ function completePhase({ skipped = false } = {}) {
   if (state.timer.phase === "work") {
     state.timer.sessionsCompleted += skipped ? 0 : 1;
     if (!skipped) openSessionReview(recordSession());
-    const shouldLongBreak = state.settings.interval > 0
+    const shouldLongBreak = !skipped && state.settings.interval > 0
       && state.timer.sessionsCompleted > 0
       && state.timer.sessionsCompleted % state.settings.interval === 0;
     state.timer.phase = shouldLongBreak ? "long_break" : "break";
@@ -879,7 +970,12 @@ function completePhase({ skipped = false } = {}) {
     state.timer.phase = "work";
   }
 
-  state.timer.remaining = durationForPhase();
+  state.timer.running = false;
+  state.timer.deadline = null;
+  state.timer.started = false;
+  state.timer.context = null;
+  state.timer.duration = durationForPhase();
+  state.timer.remaining = state.timer.duration;
   state.timer.message = pickMessage(state.timer.phase);
   notifyPhase();
   saveState();
@@ -887,28 +983,29 @@ function completePhase({ skipped = false } = {}) {
 }
 
 function recordSession() {
-  const now = new Date();
+  const now = new Date(state.timer.deadline || Date.now());
+  const context = state.timer.context || state.settings;
   const session = {
     id: crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}`,
-    date: todayKey(),
+    date: todayKey(now),
     time: new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit" }).format(now),
-    preset: state.settings.preset,
-    pet: isDirectSpritesheetUrl(state.settings.customPetUrl) ? "custom" : currentPet().label,
-    taskId: state.settings.activeTaskId,
-    intention: state.settings.currentIntention,
+    preset: context.preset,
+    pet: isRenderableSpriteUrl(state.settings.customPetUrl) ? "custom" : currentPet().label,
+    taskId: context.taskId ?? state.settings.activeTaskId,
+    intention: context.intention ?? state.settings.currentIntention,
     reflection: "",
     energy: 0,
-    focusMinutes: state.settings.work,
+    focusMinutes: state.timer.duration / 60,
     completedAt: now.toISOString(),
   };
   state.stats.sessions.push(session);
-  creditActiveTask(session.focusMinutes);
+  creditActiveTask(session.focusMinutes, session.taskId);
   return session.id;
 }
 
-function creditActiveTask(focusMinutes) {
-  const task = state.stats.tasks.find((item) => item.id === state.settings.activeTaskId);
-  if (!task || task.completed) return;
+function creditActiveTask(focusMinutes, taskId) {
+  const task = state.stats.tasks.find((item) => item.id === taskId);
+  if (!task) return;
   task.focusMinutes = Math.max(0, Number(task.focusMinutes) || 0) + focusMinutes;
 }
 
@@ -955,14 +1052,18 @@ function exportStats() {
 async function importStatsFromFile(file) {
   if (!file) return;
   try {
+    if (file.size > 10 * 1024 * 1024) throw new Error("File too large");
     const payload = JSON.parse(await file.text());
+    if (!payload || typeof payload !== "object" || !Array.isArray((payload.stats || payload).sessions)) throw new Error("Invalid export");
+    if ((payload.stats || payload).sessions.some((session) => !normalizeImportedSession(session))) throw new Error("Invalid session");
     const importedStats = normalizeImportedStats(payload.stats || payload);
     const importedSettings = payload.settings && typeof payload.settings === "object" ? payload.settings : {};
 
+    if (!window.confirm(`Replace your local history and tasks with ${importedStats.sessions.length} imported sessions? Export first to keep a backup.`)) return;
     state.stats = importedStats;
     state.settings = { ...state.settings, ...sanitizeImportedSettings(importedSettings) };
-    state.timer.running = false;
-    state.timer.remaining = durationForPhase();
+    reviewSessionId = null;
+    resetTimer();
     saveState();
     setDataStatus(`Imported ${state.stats.sessions.length} sessions.`);
     render();
@@ -974,6 +1075,7 @@ async function importStatsFromFile(file) {
 }
 
 function normalizeImportedStats(stats) {
+  stats = stats && typeof stats === "object" ? stats : {};
   const sessions = Array.isArray(stats.sessions)
     ? stats.sessions.map(normalizeImportedSession).filter(Boolean)
     : [];
@@ -987,13 +1089,13 @@ function normalizeImportedStats(stats) {
 function normalizeImportedSession(session) {
   if (!session || typeof session !== "object") return null;
   const focusMinutes = Number(session.focusMinutes);
-  if (!Number.isFinite(focusMinutes) || focusMinutes <= 0) return null;
+  if (!Number.isFinite(focusMinutes) || focusMinutes <= 0 || focusMinutes > 180 || !/^\d{4}-\d{2}-\d{2}$/.test(session.date) || Number.isNaN(Date.parse(session.date))) return null;
   return {
     id: String(session.id || `${Date.now()}-${Math.random()}`),
     date: typeof session.date === "string" ? session.date : todayKey(),
     time: typeof session.time === "string" ? session.time : "",
     preset: typeof session.preset === "string" ? session.preset : "custom",
-    pet: typeof session.pet === "string" ? session.pet : currentPet().label,
+    pet: typeof session.pet === "string" ? session.pet : "Avocado",
     taskId: typeof session.taskId === "string" ? session.taskId : "",
     intention: typeof session.intention === "string" ? session.intention : "",
     reflection: typeof session.reflection === "string" ? session.reflection.slice(0, 220) : "",
@@ -1005,7 +1107,7 @@ function normalizeImportedSession(session) {
 
 function normalizeTasks(tasks) {
   if (!Array.isArray(tasks)) return [];
-  return tasks.map(normalizeTask).filter(Boolean).slice(0, 30);
+  return tasks.map(normalizeTask).filter(Boolean);
 }
 
 function normalizeTask(task) {
@@ -1016,7 +1118,7 @@ function normalizeTask(task) {
     id: String(task.id || `${Date.now()}-${Math.random()}`),
     title,
     completed: Boolean(task.completed),
-    focusMinutes: Math.max(0, Math.round(Number(task.focusMinutes) || 0)),
+    focusMinutes: bounded(task.focusMinutes, 0, 0, 10000000),
     createdAt: typeof task.createdAt === "string" ? task.createdAt : new Date().toISOString(),
     completedAt: typeof task.completedAt === "string" ? task.completedAt : "",
   };
@@ -1036,7 +1138,10 @@ function averageSessionEnergy(sessions) {
 
 function sanitizeImportedSettings(settings) {
   const allowed = {};
-  if (typeof settings.preset === "string" && PRESETS[settings.preset]) allowed.preset = settings.preset;
+  ["notifications", "tick", "wakeLock", "onboarded"].forEach((key) => {
+    if (typeof settings[key] === "boolean") allowed[key] = settings[key];
+  });
+  if (typeof settings.preset === "string" && (PRESETS[settings.preset] || settings.preset === "custom")) allowed.preset = settings.preset;
   if (typeof settings.pet === "string" && PETS[settings.pet]) allowed.pet = settings.pet;
   if (typeof settings.customPetUrl === "string") allowed.customPetUrl = settings.customPetUrl;
   if (typeof settings.customPetSourceUrl === "string") allowed.customPetSourceUrl = settings.customPetSourceUrl;
@@ -1049,9 +1154,9 @@ function sanitizeImportedSettings(settings) {
   if (Number.isFinite(Number(settings.breakPromptIndex))) {
     allowed.breakPromptIndex = normalizeBreakPromptIndex(settings.breakPromptIndex);
   }
-  ["work", "break", "longBreak", "interval", "dailyGoalMinutes"].forEach((key) => {
-    const value = Number(settings[key]);
-    if (Number.isFinite(value)) allowed[key] = value;
+  const limits = { work: [1, 180], break: [1, 90], longBreak: [1, 120], interval: [0, 12], dailyGoalMinutes: [15, 720] };
+  Object.entries(limits).forEach(([key, [min, max]]) => {
+    if (typeof settings[key] === "number" && Number.isFinite(settings[key])) allowed[key] = bounded(settings[key], min, min, max);
   });
   return allowed;
 }
@@ -1109,35 +1214,34 @@ function completeOnboarding() {
 }
 
 function tick() {
+  if (todayKey() !== renderedDay) { renderedDay = todayKey(); render(); }
   if (!state.timer.running) return;
-  const now = Date.now();
-  const elapsed = Math.floor((now - lastTickAt) / 1000);
-  if (elapsed < 1) return;
-
-  lastTickAt += elapsed * 1000;
-  state.timer.remaining = Math.max(0, state.timer.remaining - elapsed);
-  if (state.settings.tick && state.timer.phase === "work" && state.timer.remaining > 0) {
-    playTick();
+  if (!hasControl) {
+    state.timer.remaining = Math.max(0, Math.ceil((state.timer.deadline - Date.now()) / 1000));
+    renderClock();
+    return;
   }
-  if (state.timer.remaining === 0) {
-    completePhase();
-  } else {
-    saveState();
-    render();
+  const remaining = Math.max(0, Math.ceil((state.timer.deadline - Date.now()) / 1000));
+  if (remaining === state.timer.remaining && remaining > 0) return;
+  state.timer.remaining = remaining;
+  if (remaining === 0) completePhase();
+  else {
+    if (state.settings.tick && state.timer.phase === "work") playTick();
+    renderClock();
   }
 }
 
-function notifyPhase() {
-  if (!state.settings.notifications || Notification.permission !== "granted") return;
+async function notifyPhase() {
+  if (!state.settings.notifications || !("Notification" in window) || Notification.permission !== "granted") return;
   const title = state.timer.phase === "work" ? "Break is over" : "Session complete";
-  const body = state.timer.phase === "work" ? "Your pet is ready to focus again." : state.timer.message;
-  navigator.serviceWorker?.ready.then((registration) => {
-    registration.showNotification(title, {
-      body,
+  try {
+    const registration = await navigator.serviceWorker?.getRegistration();
+    await registration?.showNotification(title, {
+      body: state.timer.message,
       icon: "./assets/icons/icon-192.png",
       badge: "./assets/icons/icon-192.png",
     });
-  });
+  } catch { /* Notification support varies by browser and permission policy. */ }
 }
 
 function unlockAudio() {
@@ -1146,6 +1250,7 @@ function unlockAudio() {
     if (!AudioContextClass) return;
     audioContext = new AudioContextClass();
   }
+  if (audioContext.state === "suspended") audioContext.resume().catch(() => {});
 }
 
 function playTick() {
@@ -1193,7 +1298,7 @@ async function releaseWakeLock() {
 
 function bindEvents() {
   els.startPauseButton.addEventListener("click", startPause);
-  els.resetButton.addEventListener("click", resetTimer);
+  els.resetButton.addEventListener("click", () => resetTimer({ confirm: true }));
   els.skipButton.addEventListener("click", skipPhase);
   els.taskForm.addEventListener("submit", (event) => {
     event.preventDefault();
@@ -1225,7 +1330,10 @@ function bindEvents() {
   els.tickToggle.addEventListener("change", () => updateSetting("tick", els.tickToggle.checked));
   els.wakeLockToggle.addEventListener("change", () => updateSetting("wakeLock", els.wakeLockToggle.checked));
   els.clearStatsButton.addEventListener("click", () => {
+    if (!window.confirm("Clear all focus history? Export a backup first if you want to keep it. Your tasks and settings will stay.")) return;
     state.stats.sessions = [];
+    state.stats.tasks.forEach((task) => { task.focusMinutes = 0; });
+    state.timer.sessionsCompleted = 0;
     state.stats.bestStreak = 0;
     saveState();
     setDataStatus("Stats cleared.");
@@ -1250,6 +1358,8 @@ function bindEvents() {
   window.addEventListener("offline", render);
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "visible") {
+      tick();
+      renderClock();
       syncWakeLock();
     } else {
       releaseWakeLock();
@@ -1259,13 +1369,14 @@ function bindEvents() {
 
 function scheduleCustomPetResolve() {
   const value = els.customPetInput.value.trim();
+  const version = ++petRequestVersion;
   window.clearTimeout(customPetResolveTimer);
   if (!value || (isDirectSpritesheetUrl(value) && !isCodexPetsUrl(value))) {
     setDirectCustomPet(value);
     return;
   }
   els.customPetStatus.textContent = "Resolving pet link...";
-  customPetResolveTimer = window.setTimeout(() => resolveCustomPetInput(value), 450);
+  customPetResolveTimer = window.setTimeout(() => resolveCustomPetInput(value, version), 450);
 }
 
 function setDirectCustomPet(url) {
@@ -1278,7 +1389,7 @@ function setDirectCustomPet(url) {
   render();
 }
 
-async function resolveCustomPetInput(value) {
+async function resolveCustomPetInput(value, version) {
   try {
     if (!isCodexPetsUrl(value)) {
       if (isDirectSpritesheetUrl(value)) setDirectCustomPet(value);
@@ -1289,7 +1400,8 @@ async function resolveCustomPetInput(value) {
     applyResolvedCustomPet(value, fallback);
     if (typeof window.fetch === "function") {
       try {
-        applyResolvedCustomPet(value, await resolveCodexPetShare(value));
+        const resolved = await resolveCodexPetShare(value);
+        if (version === petRequestVersion) applyResolvedCustomPet(value, resolved);
       } catch {
         // The browser can still render the fallback spritesheet URL even when API CORS is unavailable.
       }
@@ -1310,7 +1422,10 @@ function applyResolvedCustomPet(sourceUrl, resolved) {
 }
 
 function isDirectSpritesheetUrl(value) {
-  return /\.(webp|png|gif)(\?.*)?$/i.test(value);
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" && /\.(webp|png|gif)$/i.test(url.pathname);
+  } catch { return false; }
 }
 
 function isRenderableSpriteUrl(value) {
@@ -1319,7 +1434,7 @@ function isRenderableSpriteUrl(value) {
 
 function isCodexPetsUrl(value) {
   try {
-    return new URL(value).hostname === "codex-pets.net";
+    return new URL(value).protocol === "https:" && new URL(value).hostname === "codex-pets.net";
   } catch {
     return false;
   }
@@ -1379,7 +1494,7 @@ async function resolveCodexPetShare(url) {
 }
 
 async function fetchPetJson(url) {
-  const response = await fetch(url, { headers: { accept: "application/json" } });
+  const response = await fetch(url, { headers: { accept: "application/json" }, signal: AbortSignal.timeout(8000) });
   if (!response.ok) throw new Error("pet manifest unavailable");
   return response.json();
 }
@@ -1434,6 +1549,7 @@ function normalizePetMeta(meta) {
   const frameHeight = positiveNumber(meta.frameHeight ?? cellSize?.height, DEFAULT_PET_META.frameHeight);
   const animations = {};
   Object.entries(meta.animations || {}).forEach(([name, animation]) => {
+    if (!animation || typeof animation !== "object") return;
     animations[name] = {
       row: positiveNumber(animation.row, 0),
       frames: positiveNumber(animation.frames, 1, 1),
@@ -1443,7 +1559,7 @@ function normalizePetMeta(meta) {
   return {
     frameWidth,
     frameHeight,
-    sheetWidth: positiveNumber(meta.sheetWidth ?? atlasSize?.width, frameWidth * Math.max(...Object.values(animations).map((animation) => animation.frames), 1), 1),
+    sheetWidth: positiveNumber(meta.sheetWidth ?? atlasSize?.width, frameWidth * Math.max(8, ...Object.values(animations).map((animation) => animation.frames)), 1),
     animations: Object.keys(animations).length ? animations : DEFAULT_PET_META.animations,
   };
 }
@@ -1457,13 +1573,16 @@ function parseSize(value) {
 
 function positiveNumber(value, fallback, minimum = 0) {
   const number = Number(value);
-  if (!Number.isFinite(number) || number < minimum) return fallback;
+  if (!Number.isFinite(number) || number < minimum || number > 16384) return fallback;
   return number;
 }
 
 function bindNumberInput(input, key, min, max) {
-  const update = () => updateSetting(key, clampNumber(input, min, max));
-  input.addEventListener("input", update);
+  const update = () => {
+    const value = clampNumber(input, min, max);
+    input.value = value;
+    updateSetting(key, value);
+  };
   input.addEventListener("change", update);
 }
 
@@ -1482,7 +1601,7 @@ async function requestNotifications() {
   }
 
   if (els.notificationToggle.checked) {
-    const permission = await Notification.requestPermission();
+    const permission = await Notification.requestPermission().catch(() => "denied");
     state.settings.notifications = permission === "granted";
   } else {
     state.settings.notifications = false;
@@ -1507,9 +1626,78 @@ bindEvents();
 window.addEventListener("hashchange", syncRoute);
 syncRoute();
 render();
+acquireControl();
 registerServiceWorker();
 ticker = window.setInterval(tick, 250);
 window.addEventListener("pagehide", () => {
   window.clearInterval(ticker);
+  releaseControl?.();
   releaseWakeLock();
+});
+
+
+// One editing tab prevents duplicate completions and stale tabs overwriting history.
+async function acquireControl() {
+  if (!("locks" in navigator) || controlRequest) return;
+  const banner = document.querySelector("#storageNotice");
+  banner.hidden = false;
+  banner.textContent = "Connecting to your local workspace…";
+  controlRequest = navigator.locks.request(STORAGE_KEY, async () => {
+    hasControl = true;
+    Object.assign(state, loadState());
+    document.querySelectorAll("button, input, textarea").forEach((control) => { control.disabled = false; });
+    banner.hidden = storage.isPersistent();
+    banner.textContent = "Storage is unavailable. Export your work before closing this tab.";
+    render();
+    tick();
+    await new Promise((resolve) => { releaseControl = resolve; });
+    hasControl = false;
+    controlRequest = null;
+    releaseControl = null;
+  });
+  if (!hasControl) banner.textContent = "This workspace is open in another tab. You can browse here; close the other tab to edit here.";
+}
+
+window.addEventListener("storage", (event) => {
+  if (event.key !== STORAGE_KEY || hasControl) return;
+  Object.assign(state, loadState());
+  render();
+});
+window.addEventListener("pageshow", (event) => {
+  if (!event.persisted) return;
+  acquireControl();
+  window.clearInterval(ticker);
+  ticker = window.setInterval(tick, 250);
+  tick();
+});
+
+function syncDialog() {
+  const next = !els.onboardingOverlay.hidden ? els.onboardingOverlay : !els.sessionReviewOverlay.hidden ? els.sessionReviewOverlay : null;
+  document.querySelector(".app-shell").inert = Boolean(next);
+  if (next === activeDialog) return;
+  if (next) {
+    dialogReturnFocus = document.activeElement;
+    next.querySelector("input, textarea, button")?.focus();
+  } else if (activeDialog) {
+    if (dialogReturnFocus?.isConnected && dialogReturnFocus !== document.body) dialogReturnFocus.focus();
+    else els.startPauseButton.focus();
+  }
+  activeDialog = next;
+}
+
+document.addEventListener("keydown", (event) => {
+  if (activeDialog) {
+    if (event.key === "Escape" && activeDialog === els.sessionReviewOverlay) closeSessionReview();
+    if (event.key !== "Tab") return;
+    const controls = [...activeDialog.querySelectorAll("button:not(:disabled), input:not(:disabled), textarea:not(:disabled)")];
+    const first = controls[0], last = controls.at(-1);
+    if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+    else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+    return;
+  }
+  if (!hasControl || event.repeat || event.ctrlKey || event.metaKey || event.altKey) return;
+  if (event.code === "Space" && !event.target.closest("input, textarea, button, a, [contenteditable]")) {
+    event.preventDefault();
+    startPause();
+  }
 });

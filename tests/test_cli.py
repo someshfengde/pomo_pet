@@ -115,3 +115,17 @@ class TestConfigCommand:
         result = runner.invoke(cli, ["config", "nonexistent"])
         assert result.exit_code == 1
         assert "Unknown key" in result.output
+
+@pytest.mark.parametrize("key,value,expected", [("work_minutes", "30", 30), ("sound_enabled", "false", False), ("window_x", "123", 123)])
+def test_config_command_preserves_types(runner, key, value, expected):
+    from pomo_pet.core.config import Config
+    result = runner.invoke(cli, ["config", key, value])
+    assert result.exit_code == 0, result.output
+    assert getattr(Config.load(), key) == expected
+
+
+@pytest.mark.parametrize("args", [["--work", "0", "start"], ["--break", "-1", "start"], ["config", "volume", "loud"], ["config", "sound_enabled", "maybe"]])
+def test_invalid_options_are_reported_cleanly(runner, args):
+    result = runner.invoke(cli, args)
+    assert result.exit_code == 2
+    assert "Invalid value" in result.output

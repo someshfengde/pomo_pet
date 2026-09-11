@@ -1322,3 +1322,118 @@ a:focus-visible {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* The workspace stays compact, with scrollable views instead of clipped content. */
+:root { --radius: 14px; --muted: #a3adba; }
+.app-shell { max-width: 1440px; }
+.app-header { grid-template-columns: minmax(180px, 1fr) auto auto; }
+h1 { font-size: 2rem; letter-spacing: -0.05em; }
+.eyebrow { font-size: 0.8rem; }
+.app-view { overflow: auto; scrollbar-width: thin; scrollbar-color: var(--line-strong) transparent; }
+.timer-panel { min-height: 570px; background: radial-gradient(ellipse at 55% 38%, #17291d 0%, var(--surface) 65%); }
+.timer-panel[data-phase="break"], .timer-panel[data-phase="long_break"] { background: radial-gradient(ellipse at 55% 38%, #142b31 0%, var(--surface) 65%); }
+.timer-text { font-variant-numeric: tabular-nums; letter-spacing: -0.06em; }
+.timer-hint, .field-help { color: var(--muted); font-size: 0.875rem; line-height: 1.6; }
+.timer-hint { margin: 14px 0; min-height: 2.8em; }
+.timer-shortcut { color: var(--green); font-size: 0.875rem; font-variant-numeric: tabular-nums; text-decoration: none; padding: 12px; border: 1px solid var(--line); border-radius: 10px; }
+.timer-shortcut[hidden] { display: none; }
+.workspace-nav { grid-column: 3; }
+button, .workspace-nav a { min-height: 44px; }
+button:disabled { opacity: 0.45; cursor: not-allowed; }
+:where(button, a, input, textarea):focus-visible { outline: 2px solid var(--green); outline-offset: 4px; }
+.workspace-nav a:focus-visible { outline: 2px solid var(--green); outline-offset: 4px; }
+.feature-lede h2 { font-size: clamp(2rem, 3.2vw, 3.5rem); line-height: 1.12; letter-spacing: -0.045em; max-width: 12ch; }
+.panel-section { min-width: 0; }
+.task-list { scrollbar-width: thin; }
+.task-select strong, .active-task-row span { overflow-wrap: anywhere; }
+.history-list { scrollbar-width: thin; font-size: 0.875rem; line-height: 1.7; max-height: 26vh; }
+.section-actions { flex-wrap: wrap; }
+.storage-notice { position: fixed; inset: auto 16px 16px; z-index: 300; margin: 0; padding: 12px 18px; border: 1px solid var(--amber); border-radius: 10px; background: var(--surface); color: var(--text); font-size: 0.875rem; box-shadow: var(--shadow); }
+.storage-notice[hidden] { display: none; }
+.onboarding-dialog { max-height: calc(100dvh - 40px); overflow: auto; }
+.pet-choice small, .duration-grid label span, .stats-grid span, .achievement-item small { font-size: 0.875rem; }
+@media (min-width: 761px) {
+  .focus-dock { display: flex; flex-direction: column; overflow: auto; min-width: 0; }
+  .focus-dock .panel-section { flex: 0 0 auto; }
+  .focus-dock .command-center { padding: 24px; }
+  .focus-view { grid-template-columns: minmax(0, 1fr) minmax(310px, 360px); }
+}
+@media (max-width: 1000px) {
+  .app-header { grid-template-columns: 1fr auto; }
+  .workspace-nav { grid-column: 1 / -1; justify-content: space-between; }
+  .timer-shortcut { grid-column: 2; grid-row: 1; }
+  .brand-lockup .eyebrow { display: none; }
+}
+@media (max-width: 760px) {
+  .app-shell { padding-bottom: calc(24px + env(safe-area-inset-bottom)); }
+  .app-header { gap: 8px; }
+  .workspace-nav { position: relative; gap: 0; padding: 4px; }
+  .workspace-nav a { padding: 0 10px; font-size: 0.875rem; }
+  .focus-view { display: flex; flex-direction: column; gap: 12px; }
+  .timer-panel { min-height: 0; display: contents; }
+  .focus-copy { order: 0; padding: 12px 18px 0; display: flex; justify-content: space-between; align-items: center; }
+  .timer-text { font-size: clamp(4rem, 18vw, 6rem); }
+  .pet-stage { order: 1; padding: 0 16px; }
+  .sprite-frame { width: 100%; height: 130px; min-height: 130px; }
+  .pet-sprite { transform: scale(0.68); }
+  .pet-message { margin: 8px 0; font-size: 0.875rem; }
+  .focus-meter { gap: 8px; }
+  .focus-dock { display: contents; }
+  .command-center { order: 2; }
+  .focus-intention { order: 3; padding: 16px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); }
+  .today-card { order: 4; }
+  .break-section { order: 5; }
+  .primary-controls { grid-template-columns: 1.5fr 1fr 1fr; }
+  .timer-hint { min-height: 0; margin: 8px 0 12px; }
+  .intention-chips { display: flex; flex-wrap: wrap; }
+  .stats-grid, .duration-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .active-task-row { grid-template-columns: minmax(0, 1fr) auto; }
+  .settings-board, .stats-board { gap: 12px; }
+  .feature-lede h2 { font-size: 2rem; max-width: 18ch; }
+  .section-title { flex-wrap: wrap; gap: 10px; }
+  .pet-gallery { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .pet-choice { grid-template-columns: 1fr; text-align: center; }
+  .pet-choice-preview { margin: auto; }
+  .task-page-panel .task-form { grid-template-columns: minmax(0, 1fr) auto; }
+  .history-list { max-height: none; }
+  input, textarea { font-size: 1rem; }
+}
+.sprite-frame::before { display: none; }
+@media (max-width: 760px) {
+  .sprite-frame { aspect-ratio: auto; grid-template-rows: minmax(0, 1fr); }
+  .pet-stage { gap: 8px; }
+}
+@media (max-width: 360px) {
+  .workspace-nav a { padding: 0 8px; }
+  .session-pill { padding: 0 8px; font-size: 0.8rem; }
+  .focus-copy { gap: 8px; }
+  .sprite-frame { height: 100px; min-height: 100px; }
+  .pet-sprite { transform: scale(0.52); }
+  .pet-message { font-size: 0.8rem; }
+}
+/* Secondary routes use the full workspace for their actual controls and records. */
+.tasks-view, .pet-lab, .settings-view {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
+  align-content: start;
+}
+.section-lede.feature-lede {
+  min-height: 0;
+  padding: 14px 4px 8px;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  justify-content: start;
+  gap: 8px;
+}
+.feature-lede h2 { max-width: none; font-size: 2rem; }
+.settings-view > .feature-lede { grid-row: auto; }
+.settings-board { grid-template-columns: repeat(3, minmax(0, 1fr)); align-content: start; }
+.stats-board { grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: auto auto minmax(0, 1fr); align-content: start; }
+.stats-board .section-lede { grid-row: auto; grid-column: 1 / -1; }
+.stats-board .panel-section:last-child { grid-column: 1 / -1; }
+@media (max-width: 760px) {
+  .tasks-view, .pet-lab, .settings-view { grid-template-rows: auto auto; }
+  .settings-board, .stats-board { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto; }
+  .feature-lede h2 { font-size: 1.75rem; }
+}

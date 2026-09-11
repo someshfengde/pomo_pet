@@ -35,7 +35,7 @@ from PySide6.QtGui import QIcon, QPixmap
 from PySide6.QtCore import QTimer
 
 from pomo_pet.pets.loader import list_pets
-from pomo_pet.core.timer import PomodoroTimer, TimerPhase
+from pomo_pet.core.timer import PomodoroTimer, TimerPhase, TimerClock
 from pomo_pet.core.messages import get_message
 from pomo_pet.core.stats import StatsStore
 from pomo_pet.core.config import Config
@@ -115,18 +115,13 @@ def main() -> None:
     current_message = get_message(timer.phase)
     last_phase = timer.phase
     last_sessions = timer.sessions_completed
-    last_tick = time.time()
+    timer_clock = TimerClock(timer)
 
     # Timer getter callback for the window
     def timer_getter():
-        nonlocal current_message, last_phase, last_sessions, last_tick
-        now = time.time()
-        elapsed = now - last_tick
-        if elapsed >= 1.0 and not timer.paused:
-            ticks = int(elapsed)
-            last_tick += ticks
-            for _ in range(ticks):
-                timer.tick()
+        nonlocal current_message, last_phase, last_sessions
+        timer_clock.pulse()
+        if timer.phase != last_phase or timer.sessions_completed != last_sessions:
             if timer.phase != last_phase:
                 current_message = get_message(timer.phase)
                 if cfg.sound_enabled:
@@ -158,12 +153,14 @@ def main() -> None:
         )
 
     def on_toggle_pause():
+        timer_clock.rebase()
         timer.toggle_pause()
         if cfg.sound_enabled:
             play_click()
 
     def on_reset():
         nonlocal current_message, last_phase
+        timer_clock.rebase()
         timer.reset()
         current_message = get_message(timer.phase)
         last_phase = timer.phase
@@ -172,6 +169,7 @@ def main() -> None:
 
     def on_skip():
         nonlocal current_message, last_phase
+        timer_clock.rebase()
         timer.skip_phase()
         current_message = get_message(timer.phase)
         last_phase = timer.phase

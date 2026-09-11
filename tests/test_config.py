@@ -70,3 +70,34 @@ class TestConfigSave:
             assert c.volume == 50
             data = json.loads(cfg.read_text())
             assert data["work_minutes"] == 30
+
+@pytest.mark.parametrize("data", [[], None, 42, {"work_minutes": "30", "volume": -1}, {"sound_enabled": "false"}])
+def test_invalid_config_recovers_defaults(tmp_path, data):
+    cfg = tmp_path / "config.json"
+    cfg.write_text(json.dumps(data))
+    with patch("pomo_pet.core.config.CONFIG_FILE", cfg):
+        config = Config.load()
+        assert config.work_minutes == 25
+        assert config.volume == 80
+        assert config.sound_enabled is True
+
+
+def test_invalid_update_leaves_memory_and_disk_unchanged(tmp_path):
+    cfg = Config()
+    cfg.save()
+    with pytest.raises(ValueError):
+        cfg.update(work_minutes=-1)
+    assert cfg.work_minutes == 25
+    assert Config.load().work_minutes == 25
+
+
+def test_atomic_save_preserves_existing_file_when_replace_fails(tmp_path):
+    cfg = Config()
+    cfg.save()
+    before = (tmp_path / 'config.json').read_text()
+    with patch('pomo_pet.core.persistence.os.replace', side_effect=OSError('disk error')):
+        with pytest.raises(OSError):
+            cfg.update(work_minutes=40)
+    assert (tmp_path / 'config.json').read_text() == before
+    assert cfg.work_minutes == 25
+    assert not list(tmp_path.glob('.config.json.*'))

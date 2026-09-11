@@ -4,7 +4,7 @@
 
 [![Python 3.13+](https://img.shields.io/badge/python-3.13+-blue.svg?logo=python&logoColor=white)](https://python.org)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-171%20Python%20%2B%2011%20web-brightgreen.svg)](#testing)
+[![Tests](https://img.shields.io/badge/tests-Python%20%2B%203%20browser%20engines-brightgreen.svg)](#testing)
 
 Pomo Pet is now primarily an installable, local-first web app. It gives you a
 focused Pomodoro workspace with animated pets, built-in tasks, Codex Pets
@@ -24,6 +24,16 @@ installable PWA. It is organized as a multi-page hash-routed workspace:
 - `#/pets` — bundled pet variants plus custom Codex Pets links, pet pages, API URLs, and direct spritesheets.
 - `#/stats` — weekly chart, insights, achievements, session history, reflections, import/export, and share summary.
 - `#/settings` — duration controls, daily goal, bond progress, notifications, gentle tick, and wake lock preferences.
+
+The timer keeps its deadline across reloads and background tabs. Each phase ends
+at a deliberate pause: start your break or next focus session when you are ready.
+Changes to durations apply to the next session; a running session keeps its original
+duration and task. Only completed focus sessions earn minutes.
+
+One browser tab edits the workspace at a time. Other tabs can browse and automatically
+take over when the editing tab closes. Use Export to back up tasks, settings, and
+history before clearing or replacing data. If browser storage is unavailable or
+full, a visible message warns that your latest work needs exporting.
 
 Everything is local-first: tasks, settings, stats, reflections, imported pets,
 and achievements stay in browser storage unless you export/share them yourself.
@@ -108,7 +118,7 @@ pomo-pet config volume 50
 ## Features
 
 - **Installable web app** — PWA in `docs/` with offline support, responsive app-style routes, and local stats
-- **Viewport-fit workspace** — laptop and desktop layouts fit the visible screen without document scrollbars
+- **Responsive workspace** — reachable timer controls on phones and scrollable routes on smaller desktop screens
 - **Built-in focus tasks** — add/select/complete tasks directly in the web app; selected tasks become the active focus intention
 - **Codex Pets support** — import custom pets from direct spritesheets, `codex-pets.net/pets/{slug}`, `share/{slug}`, or API URLs
 - **Web review tools** — weekly chart, insights, daily goal ring, achievements, history, reflections, import/export, and share summary
@@ -179,7 +189,7 @@ make test       # Run Python tests
 make test-all   # Run with coverage
 make run        # Launch with avocado
 make web        # Serve the static web app from docs/
-npm run test:web # Run Playwright web workflows
+npm run test:web # Run Chromium, Firefox, and WebKit workflows
 uv run python scripts/audit_pwa.py # Audit static PWA requirements
 ```
 
@@ -197,8 +207,20 @@ Python desktop behavior, static PWA checks, and browser workflows are covered by
 make test
 uv run pytest tests/test_web_pwa.py
 uv run python scripts/audit_pwa.py
+npx playwright install chromium firefox webkit
 npm run test:web
 ```
+
+Browser regressions cover timer reload/background recovery, pause semantics,
+local dates, original task attribution, multiple tabs, import/export, storage
+failure, offline loading, pet request races, keyboard dialogs, automated WCAG
+checks, and layouts from 320px phones to desktop screens. Python tests isolate
+preferences from your real configuration.
+
+GitHub Pages deploys the exact revision after CI passes. To redeploy, run the CI
+workflow manually; successful main-branch runs trigger Pages automatically.
+
+The overhaul plan and implementation notes are in [OVERHAUL_PLAN.md](OVERHAUL_PLAN.md).
 
 **Project structure:**
 ```

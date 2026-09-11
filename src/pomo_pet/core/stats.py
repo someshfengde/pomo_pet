@@ -88,7 +88,8 @@ class StatsStore:
 
     def save(self) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        self.path.write_text(json.dumps(asdict(self.stats), indent=2))
+        from pomo_pet.core.persistence import atomic_write
+        atomic_write(self.path, json.dumps(asdict(self.stats), indent=2))
 
     def record_session(self, focus_minutes: int, break_minutes: int) -> None:
         self.stats.record_session(focus_minutes, break_minutes)

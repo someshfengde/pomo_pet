@@ -36,3 +36,13 @@ server commands that point at `docs/`.
 Generated files should stay out of version control. Common examples include
 `.coverage`, `.DS_Store`, `test-results/`, `playwright-report/`, `build/`,
 `dist/`, and `node_modules/`.
+
+The installed wheel bundles pets and sounds under `pomo_pet/resources/`.
+`resources.py` selects bundled assets or the source-checkout paths.
+`core/persistence.py` provides atomic JSON replacement, and `TimerClock` in
+`core/timer.py` handles GUI elapsed time and phase-boundary pauses.
+
+The browser persists an absolute timer deadline plus a snapshot of the original
+session duration and task context. Clock ticks update only timer UI; state changes
+perform a full render. Web Locks choose one editing tab to avoid conflicting writes.
+The service worker caches only this app's scoped shell assets.

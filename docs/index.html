@@ -27,7 +27,7 @@
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="icon" href="./assets/icons/icon-192.png">
   <link rel="apple-touch-icon" href="./assets/icons/icon-192.png">
-  <link rel="stylesheet" href="./styles.css?v=19">
+  <link rel="stylesheet" href="./styles.css?v=20">
   <script type="application/ld+json">
     {
       "@context": "https://schema.org",
@@ -45,15 +45,17 @@
   </script>
 </head>
 <body>
+  <p id="storageNotice" class="storage-notice" role="status" hidden></p>
   <main class="app-shell">
     <header class="app-header" aria-label="Pomo Pet workspace">
       <div class="brand-lockup">
         <img class="brand-icon" src="./assets/icons/icon-192.png" alt="" aria-hidden="true">
         <div>
-          <p class="eyebrow">Local-first focus companion</p>
+          <p class="eyebrow">A little company. A little focus.</p>
           <h1 id="app-title">Pomo Pet</h1>
         </div>
       </div>
+      <a id="timerShortcut" class="timer-shortcut" href="#/focus" hidden>25:00 · Work</a>
       <nav class="workspace-nav" aria-label="Workspace sections">
         <a href="#/focus" data-route-link="focus">Focus</a>
         <a href="#/tasks" data-route-link="tasks">Tasks</a>
@@ -68,14 +70,14 @@
         <div class="focus-copy">
           <div>
             <p class="phase-kicker" id="phaseLabel">Work</p>
-            <div id="timerText" class="timer-text">25:00</div>
+            <div id="timerText" class="timer-text" role="timer" aria-label="Time remaining">25:00</div>
           </div>
           <div class="session-pill">
             <span id="sessionLabel">0 sessions</span>
           </div>
         </div>
 
-        <div class="pet-stage" aria-live="polite">
+        <div class="pet-stage">
           <div class="sprite-frame">
             <div id="petSprite" class="pet-sprite" role="img" aria-label="Animated avocado pet"></div>
           </div>
@@ -106,6 +108,7 @@
             <h2>Session</h2>
             <span id="presetSummary">25 / 5</span>
           </div>
+          <p id="timerHint" class="timer-hint" aria-live="polite">Ready when you are.</p>
           <div class="primary-controls" aria-label="Timer controls">
             <button id="startPauseButton" class="command-button primary" type="button">Start</button>
             <button id="resetButton" class="command-button" type="button">Reset</button>
@@ -152,7 +155,7 @@
     <section id="tasks" class="app-view tasks-view" data-route="tasks" aria-label="Focus task planning">
       <div class="section-lede feature-lede">
         <p class="eyebrow">Tasks</p>
-        <h2>Plan the next move, then let the timer carry it.</h2>
+        <h2>One task at a time.</h2>
       </div>
       <section class="panel-section task-panel task-page-panel">
         <div class="section-title">
@@ -160,7 +163,7 @@
           <span id="taskSummary">0 open</span>
         </div>
         <form id="taskForm" class="task-form">
-          <input id="taskInput" type="text" maxlength="80" placeholder="Add a task">
+          <input id="taskInput" aria-label="New task" type="text" maxlength="80" placeholder="Add a task">
           <button class="text-button" type="submit">Add</button>
         </form>
         <div id="taskList" class="task-list" aria-label="Focus tasks"></div>
@@ -170,14 +173,14 @@
     <section id="pet-lab" class="app-view pet-lab" data-route="pets" aria-label="Pet lab">
       <div class="section-lede feature-lede">
         <p class="eyebrow">Pet Lab</p>
-        <h2>Choose a companion without leaving the flow.</h2>
+        <h2>Meet your focus buddy.</h2>
       </div>
       <div class="panel-section">
         <div class="section-title">
           <h2>Pet</h2>
           <a class="external-link" href="https://codex-pets.net/" target="_blank" rel="noreferrer">Browse gallery</a>
         </div>
-        <div id="petGallery" class="pet-gallery" role="list" aria-label="Available pets"></div>
+        <div id="petGallery" class="pet-gallery" role="group" aria-label="Available pets"></div>
         <label class="custom-pet-row">
           <span>Custom pet or Codex Pets URL</span>
           <input id="customPetInput" type="url" placeholder="https://codex-pets.net/pets/dario">
@@ -189,7 +192,7 @@
     <section id="settings" class="app-view settings-view" data-route="settings" aria-label="Timer settings">
       <div class="section-lede feature-lede">
         <p class="eyebrow">Settings</p>
-        <h2>Tune the routine, then get the interface out of your way.</h2>
+        <h2>Make time your own.</h2>
       </div>
       <div class="settings-board">
         <section class="panel-section bond-panel">
@@ -207,7 +210,7 @@
             </div>
           </div>
           <label class="goal-row">
-            <span>Daily goal</span>
+            <span>Daily goal (minutes)</span>
             <input id="dailyGoalInput" type="number" min="15" max="720" step="15" value="120">
           </label>
         </section>
@@ -227,14 +230,15 @@
               <input id="breakInput" type="number" min="1" max="90" value="5">
             </label>
             <label>
-              <span>Long</span>
+              <span>Long break</span>
               <input id="longBreakInput" type="number" min="1" max="120" value="15">
             </label>
             <label>
-              <span>Every</span>
+              <span>Sessions per long break</span>
               <input id="intervalInput" type="number" min="0" max="12" value="4">
             </label>
           </div>
+          <p class="field-help">Changes apply to your next session. Set sessions per long break to 0 to disable long breaks.</p>
         </section>
 
         <section class="panel-section">
@@ -261,7 +265,7 @@
     <section id="stats" class="app-view stats-board" data-route="stats" aria-label="Focus statistics">
       <div class="section-lede feature-lede">
         <p class="eyebrow">Review</p>
-        <h2>See what happened without turning focus into homework.</h2>
+        <h2>Small sessions. Real progress.</h2>
       </div>
       <section class="panel-section">
         <div class="section-title">
@@ -307,10 +311,10 @@
             <button id="shareSummaryButton" class="text-button" type="button">Share</button>
             <button id="importStatsButton" class="text-button" type="button">Import</button>
             <button id="exportStatsButton" class="text-button" type="button">Export</button>
-            <button id="clearStatsButton" class="text-button" type="button">Clear</button>
+            <button id="clearStatsButton" class="text-button" type="button">Clear history</button>
           </div>
         </div>
-        <input id="importStatsInput" class="visually-hidden" type="file" accept="application/json,.json">
+        <input id="importStatsInput" hidden aria-label="Import a Pomo Pet backup" class="visually-hidden" type="file" accept="application/json,.json">
         <p id="dataStatus" class="data-status" aria-live="polite"></p>
         <ol id="historyList" class="history-list"></ol>
       </section>
@@ -320,13 +324,14 @@
   <section id="onboardingOverlay" class="onboarding-overlay" hidden aria-labelledby="onboardingTitle" role="dialog" aria-modal="true">
     <div class="onboarding-dialog">
       <p class="eyebrow">First focus</p>
-      <h2 id="onboardingTitle">Set up Pomo Pet</h2>
+      <h2 id="onboardingTitle">Make room for one thing.</h2>
+      <p class="field-help">Choose a rhythm and a small intention. Your work stays on this device.</p>
       <label class="onboarding-field">
         <span>Today I want to focus on</span>
         <input id="onboardingIntentionInput" type="text" maxlength="80" placeholder="One task">
       </label>
       <div id="onboardingPresetButtons" class="segmented-control" role="group" aria-label="Starting preset"></div>
-      <button id="onboardingStartButton" class="command-button primary" type="button">Start setup</button>
+      <button id="onboardingStartButton" class="command-button primary" type="button">Let’s focus</button>
     </div>
   </section>
 
@@ -338,6 +343,7 @@
         <span>What moved forward?</span>
         <textarea id="sessionReviewInput" maxlength="220" placeholder="One sentence is enough"></textarea>
       </label>
+      <p class="field-help">How was your energy? 1 is low, 5 is high. Your break starts when you’re ready.</p>
       <div class="review-rating" role="group" aria-label="Session energy">
         <button type="button" data-energy="1">1</button>
         <button type="button" data-energy="2">2</button>
@@ -352,6 +358,6 @@
     </div>
   </section>
 
-  <script src="./app.js?v=19" type="module"></script>
+  <script src="./app.js?v=20" type="module"></script>
 </body>
 </html>

@@ -21,6 +21,10 @@ build-backend = "hatchling.build"
 [tool.hatch.build.targets.wheel]
 packages = ["src/pomo_pet"]
 
+[tool.hatch.build.targets.wheel.force-include]
+"pets" = "pomo_pet/resources/pets"
+"assets/sounds" = "pomo_pet/resources/assets/sounds"
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 

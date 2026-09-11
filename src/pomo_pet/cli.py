@@ -12,7 +12,7 @@ import click
 _FOREGROUND_ENV = "_POMO_PET_FOREGROUND"
 
 from pomo_pet.pets.loader import list_pets
-from pomo_pet.core.timer import PomodoroTimer, TimerPhase
+from pomo_pet.core.timer import PomodoroTimer, TimerPhase, TimerClock
 from pomo_pet.core.messages import get_message, load_custom_messages
 from pomo_pet.core.stats import StatsStore
 from pomo_pet.core.config import Config
@@ -21,7 +21,8 @@ from pomo_pet.ui.notifications import notify_session_complete, notify_break_over
 
 
 def get_pets_dir() -> Path:
-    return Path(__file__).resolve().parents[2] / "pets"
+    from pomo_pet.resources import resource_dir
+    return resource_dir("pets")
 
 
 def _set_macos_process_name(name: str) -> None:
@@ -96,17 +97,12 @@ def _start_pet(pet_name: str, work_minutes: int, break_minutes: int, no_sound: b
     current_message = get_message(timer.phase)
     last_phase = timer.phase
     last_sessions = timer.sessions_completed
-    last_tick = time.time()
+    timer_clock = TimerClock(timer)
 
     def timer_getter():
-        nonlocal current_message, last_phase, last_sessions, last_tick
-        now = time.time()
-        elapsed = now - last_tick
-        if elapsed >= 1.0 and not timer.paused:
-            ticks = int(elapsed)
-            last_tick += ticks
-            for _ in range(ticks):
-                timer.tick()
+        nonlocal current_message, last_phase, last_sessions
+        timer_clock.pulse()
+        if timer.phase != last_phase or timer.sessions_completed != last_sessions:
             if timer.phase != last_phase:
                 current_message = get_message(timer.phase)
                 if not no_sound:
@@ -138,12 +134,14 @@ def _start_pet(pet_name: str, work_minutes: int, break_minutes: int, no_sound: b
         )
 
     def on_toggle_pause():
+        timer_clock.rebase()
         timer.toggle_pause()
         if not no_sound:
             play_click()
 
     def on_reset():
         nonlocal current_message, last_phase
+        timer_clock.rebase()
         timer.reset()
         current_message = get_message(timer.phase)
         last_phase = timer.phase
@@ -152,6 +150,7 @@ def _start_pet(pet_name: str, work_minutes: int, break_minutes: int, no_sound: b
 
     def on_skip():
         nonlocal current_message, last_phase
+        timer_clock.rebase()
         timer.skip_phase()
         current_message = get_message(timer.phase)
         last_phase = timer.phase
@@ -198,9 +197,9 @@ def _start_pet(pet_name: str, work_minutes: int, break_minutes: int, no_sound: b
 @click.group(invoke_without_command=True)
 @click.pass_context
 @click.version_option(package_name="pomo-pet", prog_name="pomo-pet")
-@click.option("--work", "work_minutes", default=None, type=int, help="Work duration (min)")
-@click.option("--break", "break_minutes", default=None, type=int, help="Break duration (min)")
-@click.option("--volume", default=None, type=int, help="Sound volume (0-100)")
+@click.option("--work", "work_minutes", default=None, type=click.IntRange(1, 180), help="Work duration (min)")
+@click.option("--break", "break_minutes", default=None, type=click.IntRange(1, 90), help="Break duration (min)")
+@click.option("--volume", default=None, type=click.IntRange(0, 100), help="Sound volume (0-100)")
 @click.option("--no-sound", is_flag=True, help="Disable sounds")
 @click.option("--messages-file", default=None, type=click.Path(exists=True), help="Custom messages file (one per line)")
 def cli(ctx, work_minutes, break_minutes, volume, no_sound, messages_file):
@@ -338,16 +337,22 @@ def config_cmd(key, value):
         click.echo(f"Unknown key: {key}. Valid: {', '.join(field_types)}", err=True)
         sys.exit(1)
 
-    # Cast to correct type
     ft = field_types[key]
-    if ft == "int":
-        value = int(value)
-    elif ft == "bool":
-        value = value.lower() in ("true", "1", "yes")
-    elif ft == "Optional[str]":
-        value = value if value != "none" else None
-
-    cfg.update(**{key: value})
+    # Dataclass field types are actual Python types, not their string names.
+    try:
+        if key in ("window_x", "window_y"):
+            value = None if value.lower() == "none" else int(value)
+        elif ft is int:
+            value = int(value)
+        elif ft is bool:
+            if value.lower() not in ("true", "false", "1", "0", "yes", "no"):
+                raise ValueError("use true or false")
+            value = value.lower() in ("true", "1", "yes")
+        elif key == "messages_file":
+            value = None if value.lower() == "none" else value
+        cfg.update(**{key: value})
+    except ValueError as error:
+        raise click.BadParameter(str(error), param_hint=key) from error
     click.echo(f"Set {key} = {value}")
 
 

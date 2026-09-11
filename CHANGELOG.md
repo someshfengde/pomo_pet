@@ -1,3 +1,16 @@
+# Unreleased — reliability and usability overhaul
+
+- Keep web timer deadlines across reloads and preserve paused progress.
+- Pause at phase boundaries; credit the session's original duration and task.
+- Use local calendar days and retain yesterday's active streak.
+- Protect local imports, history deletion, task lists, and concurrent tabs.
+- Preserve text entry and keyboard focus; add accessible dialogs and storage warnings.
+- Improve mobile timer controls and simplify full-width Tasks, Pets, Stats, and Settings.
+- Scope offline caches to this app and retain healthy responses during server failures.
+- Fix desktop pause accounting, skipped-session credit, typed config values, and wheel assets.
+- Write desktop preferences and stats atomically; isolate tests from real user preferences.
+- Gate Pages publication on the tested CI revision and test three browser engines.
+
 # Changelog
 
 All notable changes to Pomo Pet are documented here.

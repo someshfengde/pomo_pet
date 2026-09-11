@@ -5,7 +5,9 @@ import threading
 from pathlib import Path
 
 
-_SOUNDS_DIR = Path(__file__).resolve().parents[3] / "assets" / "sounds"
+from pomo_pet.resources import resource_dir
+
+_SOUNDS_DIR = resource_dir("assets") / "sounds"
 
 # Volume: 0 (mute) to 100 (max). afplay -v uses 0.0-1.0+ scale.
 _volume: int = 80
