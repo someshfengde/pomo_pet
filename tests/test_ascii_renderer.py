@@ -1,7 +1,7 @@
 """Tests for ASCII animation renderer."""
 
 import pytest
-from src.ui.ascii_renderer import (
+from pomo_pet.ui.ascii_renderer import (
     _pixel_to_char,
     _image_to_ascii,
     load_ascii_frames,

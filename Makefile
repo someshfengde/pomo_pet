@@ -24,7 +24,7 @@ test:
 	uv run pytest tests/ -v
 
 test-all:
-	uv run pytest tests/ -v --cov=src --cov-report=term-missing
+	uv run pytest tests/ -v --cov=pomo_pet --cov-report=term-missing
 
 run:
 	uv run pomo-pet start

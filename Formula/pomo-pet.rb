@@ -22,7 +22,7 @@ class PomoPet < Formula
       #!/bin/bash
       export VIRTUAL_ENV="#{libexec}/venv"
       export PATH="#{libexec}/venv/bin:$PATH"
-      exec python3 -m src "$@"
+      exec python3 -m pomo_pet "$@"
     SH
     (bin/"pomo-pet").chmod 0755
   end

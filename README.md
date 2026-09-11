@@ -4,13 +4,13 @@
 
 [![Python 3.13+](https://img.shields.io/badge/python-3.13+-blue.svg?logo=python&logoColor=white)](https://python.org)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-171%20Python%20%2B%2010%20web-brightgreen.svg)](#testing)
+[![Tests](https://img.shields.io/badge/tests-171%20Python%20%2B%2011%20web-brightgreen.svg)](#testing)
 
 Pomo Pet is now primarily an installable, local-first web app. It gives you a
 focused Pomodoro workspace with animated pets, built-in tasks, Codex Pets
-imports, local stats, achievements, session reflections, offline support, and
-PWA install metadata. The original Python desktop pet is still available as a
-secondary always-on-top companion for people who want a tiny floating timer.
+imports, local stats, achievements, session reflections, and offline support.
+The original Python desktop pet is still available as a secondary always-on-top
+companion for people who want a tiny floating timer.
 
 ## Web App
 
@@ -23,7 +23,7 @@ installable PWA. It is organized as a multi-page hash-routed workspace:
 - `#/tasks` — local task queue for planning, selecting, and completing focus targets.
 - `#/pets` — bundled pet variants plus custom Codex Pets links, pet pages, API URLs, and direct spritesheets.
 - `#/stats` — weekly chart, insights, achievements, session history, reflections, import/export, and share summary.
-- `#/settings` — duration controls, daily goal, bond progress, notifications, gentle tick, wake lock, install, and storage readiness.
+- `#/settings` — duration controls, daily goal, bond progress, notifications, gentle tick, and wake lock preferences.
 
 Everything is local-first: tasks, settings, stats, reflections, imported pets,
 and achievements stay in browser storage unless you export/share them yourself.
@@ -43,7 +43,7 @@ and achievements stay in browser storage unless you export/share them yourself.
 ### Web
 
 ```bash
-python3 -m http.server 4173 --directory docs
+make web
 # Open http://127.0.0.1:4173
 ```
 
@@ -173,19 +173,21 @@ frame sizing.
 ## Development
 
 ```bash
+make help       # Show available commands
 make install    # Install dependencies
 make test       # Run Python tests
 make test-all   # Run with coverage
 make run        # Launch with avocado
-make app        # Build macOS .app bundle
-make app-dmg    # Build DMG for distribution
+make web        # Serve the static web app from docs/
+npm run test:web # Run Playwright web workflows
+uv run python scripts/audit_pwa.py # Audit static PWA requirements
 ```
 
 ## Web App / PWA
 
-The PWA also includes offline caching, install metadata, social preview tags,
-structured data, a generated preview image, service worker, notification support,
-browser title timer sync, and optional screen wake lock during running sessions.
+The PWA also includes offline caching, social preview tags, structured data, a
+generated preview image, service worker, notification support, browser title
+timer sync, and optional screen wake lock during running sessions.
 
 ## Testing
 
@@ -193,30 +195,18 @@ Python desktop behavior, static PWA checks, and browser workflows are covered by
 
 ```bash
 make test
-pytest tests/test_web_pwa.py
-python scripts/audit_pwa.py
+uv run pytest tests/test_web_pwa.py
+uv run python scripts/audit_pwa.py
 npm run test:web
 ```
 
 **Project structure:**
 ```
-src/
+src/pomo_pet/
 ├── cli.py              # Click CLI with subcommands
-├── core/
-│   ├── timer.py        # PomodoroTimer (pause, reset, skip, long breaks)
-│   ├── messages.py     # Phase-aware messages (work, break, long break)
-│   ├── stats.py        # Session statistics with streak tracking
-│   └── config.py       # Persistent config (~/.pomo-pet/config.json)
-├── pets/
-│   ├── models.py       # Pet, AnimationDef
-│   ├── loader.py       # Load from pet.json
-│   └── renderer.py     # Pillow spritesheet utils
-└── ui/
-    ├── theme.py        # Design tokens & colors
-    ├── window.py       # PySide6 window, animations, context menu
-    ├── sounds.py       # Sound effects (macOS afplay)
-    ├── notifications.py # macOS native notifications
-    └── tray.py         # System tray integration
+├── core/               # Timer, messages, stats, and config
+├── pets/               # Pet models, loading, and spritesheet rendering
+└── ui/                 # PySide6 window, tray, sounds, notifications, theme
 docs/
 ├── index.html          # Static PWA app shell
 ├── app.js              # Browser timer, task list, pet gallery, stats, notifications
@@ -227,7 +217,12 @@ docs/
 └── sw.js               # Offline service worker
 scripts/
 └── audit_pwa.py        # Static PWA launch/installability and repo-safety audit
+web-tests/
+└── pwa.spec.js         # Browser workflow tests
 ```
+
+See [docs/PROJECT_STRUCTURE.md](docs/PROJECT_STRUCTURE.md) for the fuller
+maintainer map.
 
 ## License
 

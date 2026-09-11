@@ -3,8 +3,8 @@
 import json
 import pytest
 from pathlib import Path
-from src.pets.models import Pet, AnimationDef
-from src.pets.loader import load_pet, list_pets, PetLoadError
+from pomo_pet.pets.models import Pet, AnimationDef
+from pomo_pet.pets.loader import load_pet, list_pets, PetLoadError
 
 
 class TestAnimationDef:

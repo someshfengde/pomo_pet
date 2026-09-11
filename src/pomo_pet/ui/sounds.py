@@ -5,7 +5,7 @@ import threading
 from pathlib import Path
 
 
-_SOUNDS_DIR = Path(__file__).parent.parent.parent / "assets" / "sounds"
+_SOUNDS_DIR = Path(__file__).resolve().parents[3] / "assets" / "sounds"
 
 # Volume: 0 (mute) to 100 (max). afplay -v uses 0.0-1.0+ scale.
 _volume: int = 80

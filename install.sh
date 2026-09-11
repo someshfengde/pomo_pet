@@ -49,7 +49,7 @@ WRAPPER="$BIN_DIR/pomo-pet"
 cat > "$WRAPPER" << 'EOF'
 #!/bin/bash
 cd "$HOME/.pomo-pet"
-exec uv run python -m src "$@"
+exec uv run python -m pomo_pet "$@"
 EOF
 chmod +x "$WRAPPER"
 

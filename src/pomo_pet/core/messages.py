@@ -5,7 +5,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import List, Optional
 
-from src.core.timer import TimerPhase
+from pomo_pet.core.timer import TimerPhase
 
 WORK_MESSAGES = [
     "Focus time! You've got this!",

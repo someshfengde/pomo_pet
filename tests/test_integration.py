@@ -5,10 +5,10 @@ import pytest
 from pathlib import Path
 from unittest.mock import patch, MagicMock
 from click.testing import CliRunner
-from src.cli import cli
-from src.core.timer import PomodoroTimer, TimerPhase
-from src.pets.loader import load_pet, list_pets
-from src.core.messages import get_message
+from pomo_pet.cli import cli
+from pomo_pet.core.timer import PomodoroTimer, TimerPhase
+from pomo_pet.pets.loader import load_pet, list_pets
+from pomo_pet.core.messages import get_message
 
 
 @pytest.fixture
@@ -22,7 +22,7 @@ class TestFullWorkflow:
         assert result.exit_code == 0
         assert "avocado" in result.output.lower()
 
-    @patch("src.cli.subprocess")
+    @patch("pomo_pet.cli.subprocess")
     def test_start_default(self, mock_sub, runner):
         mock_proc = MagicMock()
         mock_proc.pid = 12345

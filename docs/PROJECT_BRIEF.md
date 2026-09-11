@@ -48,21 +48,24 @@ Pomo Pet combines the Pomodoro productivity technique with cute, interactive dig
 - Desktop notifications
 - Task filters and richer web analytics
 
-## Project Structure ( Rough feel free to modify as needed)
+## Project Structure
 
 ```
 pomo_pet/
-├── instruction.md              # This file - project guidelines
+├── README.md                   # User-facing overview
+├── CONTRIBUTING.md             # Contributor workflow and review checklist
+├── CHANGELOG.md                # Release notes
 ├── pets/                       # Directory containing all available pets
 │   └── avocado/
 │       ├── pet.json           # Pet metadata and configuration
 │       └── spritesheet.webp   # Pet animation spritesheet
-├── src/
-│   ├── cli.py                 # CLI entry point and argument parsing
-│   ├── pet_renderer.py        # Display and rendering logic
-│   ├── timer.py               # Pomodoro timer logic and state
-│   ├── pet_loader.py          # Load pet data from JSON
-│   └── messages.py            # Pet dialog/message system
+├── src/pomo_pet/
+│   ├── cli.py                 # CLI entry point and commands
+│   ├── core/                  # Timer, messages, stats, config
+│   ├── pets/                  # Pet models, loading, rendering
+│   └── ui/                    # Desktop window, tray, sounds, notifications
+├── docs/                      # GitHub Pages static PWA root
+├── web-tests/                 # Playwright web workflow tests
 ├── tests/
 │   ├── test_timer.py          # Timer functionality tests
 │   ├── test_pet_loader.py     # Pet loading tests
@@ -85,7 +88,7 @@ pomo_pet/
 2. Navigate to the project directory: `cd pomo_pet`
 3. Install dependencies: `make install` or `uv sync --all-extras`
 4. Run the desktop app: `pomo-pet start avocado`
-5. Run the web app locally: `python3 -m http.server 4173 --directory docs`
+5. Run the web app locally: `make web`
 
 ### Dependencies (Managed in pyproject.toml / uv.lock)
 - `click` - CLI argument parsing
@@ -98,19 +101,19 @@ pomo_pet/
 
 ### Basic Usage
 ```bash
-python -m src.cli --pet avocado
+pomo-pet start avocado
 ```
 
 ### With Custom Timer Settings
 ```bash
-python -m src.cli --pet avocado --work 25 --break 5
+pomo-pet --work 25 --break 5 start avocado
 ```
 
 ### Available Options
-- `--pet <name>` - Select which pet to display (e.g., avocado)
+- `start <name>` - Select which pet to display (e.g., avocado)
 - `--work <minutes>` - Set work session duration (default: 25)
 - `--break <minutes>` - Set break session duration (default: 5)
-- `--list-pets` - Display all available pets
+- `list` - Display all available pets
 - `--help` - Show help message
 
 ## Adding New Pets (Contributing)
@@ -165,8 +168,8 @@ python -m src.cli --pet avocado --work 25 --break 5
 ### Testing Requirements
 - All new features must include unit tests
 - Aim for at least 80% code coverage
-- Run tests before submitting PRs: `pytest`
-- Run coverage report: `pytest --cov=src`
+- Run tests before submitting PRs: `make test`
+- Run coverage report: `make test-all`
 
 ### Testing Checklist
 - [ ] Timer starts and counts down correctly
@@ -178,8 +181,9 @@ python -m src.cli --pet avocado --work 25 --break 5
 - [ ] Application runs cleanly without warnings
 
 ### Before Committing
-- Run `pytest` to ensure all tests pass
-- Run `pytest --cov=src` to check coverage
+- Run `make test` to ensure Python checks pass
+- Run `npm run test:web` when changing `docs/`
+- Run `uv run python scripts/audit_pwa.py` when changing PWA metadata, assets, or service worker behavior
 - Test the CLI manually with different pets and timer settings
 - Verify no errors in console output
 

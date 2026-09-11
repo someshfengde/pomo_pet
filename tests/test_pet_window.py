@@ -8,9 +8,9 @@ from PySide6.QtWidgets import QApplication
 
 _app = QApplication.instance() or QApplication(sys.argv)
 
-from src.ui.window import PetWindow
-from src.ui.theme import WindowConfig
-from src.pets.models import AnimationDef, Pet
+from pomo_pet.ui.window import PetWindow
+from pomo_pet.ui.theme import WindowConfig
+from pomo_pet.pets.models import AnimationDef, Pet
 from PySide6.QtCore import Qt, QPoint, QPointF
 from PySide6.QtGui import QMouseEvent
 
@@ -111,7 +111,7 @@ class TestWindowSetup:
         mock_appkit = MagicMock()
         mock_appkit.NSFloatingWindowLevel = 3
 
-        monkeypatch.setattr("src.ui.window._AppKit", mock_appkit)
+        monkeypatch.setattr("pomo_pet.ui.window._AppKit", mock_appkit)
         monkeypatch.setattr(window, "winId", lambda: 0x12345)
 
         # Patch the whole internals to avoid ctypes/pyobjc in tests
@@ -121,7 +121,7 @@ class TestWindowSetup:
 
     def test_apply_floating_level_no_appkit(self, window, monkeypatch):
         """_apply_floating_level is a no-op when _AppKit is None."""
-        monkeypatch.setattr("src.ui.window._AppKit", None)
+        monkeypatch.setattr("pomo_pet.ui.window._AppKit", None)
         window._apply_floating_level()  # should not raise
 
     def test_initial_state(self, window):

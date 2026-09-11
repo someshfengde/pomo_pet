@@ -4,7 +4,7 @@ import json
 import pytest
 from datetime import date, timedelta
 from pathlib import Path
-from src.core.stats import SessionStats, StatsStore
+from pomo_pet.core.stats import SessionStats, StatsStore
 
 
 class TestSessionStats:

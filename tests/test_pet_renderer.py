@@ -3,7 +3,7 @@
 import pytest
 from unittest.mock import MagicMock, patch
 from pathlib import Path
-from src.pets.renderer import PetRenderer
+from pomo_pet.pets.renderer import PetRenderer
 
 
 class TestPetRendererInit:

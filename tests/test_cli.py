@@ -3,7 +3,7 @@
 import pytest
 from unittest.mock import patch, MagicMock
 from click.testing import CliRunner
-from src.cli import cli
+from pomo_pet.cli import cli
 
 
 @pytest.fixture
@@ -32,7 +32,7 @@ class TestListCommand:
         assert "avocado" in result.output.lower()
 
     def test_empty(self, runner, tmp_path):
-        with patch("src.cli.get_pets_dir", return_value=tmp_path):
+        with patch("pomo_pet.cli.get_pets_dir", return_value=tmp_path):
             result = runner.invoke(cli, ["list"])
             assert "No pets found" in result.output
 
@@ -43,7 +43,7 @@ class TestStartCommand:
 
     def test_default_pet(self, runner):
         """start without argument defaults to avocado."""
-        with patch("src.cli.subprocess") as mock_sub:
+        with patch("pomo_pet.cli.subprocess") as mock_sub:
             mock_proc = MagicMock()
             mock_proc.pid = 12345
             mock_sub.Popen.return_value = mock_proc
@@ -52,7 +52,7 @@ class TestStartCommand:
             assert "Avocado" in result.output
             assert "12345" in result.output
 
-    @patch("src.cli.subprocess")
+    @patch("pomo_pet.cli.subprocess")
     def test_specific_pet(self, mock_sub, runner):
         mock_proc = MagicMock()
         mock_proc.pid = 12345
@@ -61,7 +61,7 @@ class TestStartCommand:
         assert result.exit_code == 0
         assert "Avocado" in result.output
 
-    @patch("src.cli.subprocess")
+    @patch("pomo_pet.cli.subprocess")
     def test_custom_durations(self, mock_sub, runner):
         mock_proc = MagicMock()
         mock_proc.pid = 12345
@@ -72,7 +72,7 @@ class TestStartCommand:
 
 class TestStatsCommand:
     def test_stats(self, runner):
-        with patch("src.cli.StatsStore") as mock_store:
+        with patch("pomo_pet.cli.StatsStore") as mock_store:
             mock_store.return_value.stats = MagicMock(
                 total_sessions=5, total_hours=2.5, total_focus_minutes=150,
                 current_streak=3, best_streak=5, daily_sessions=2,
@@ -105,8 +105,8 @@ class TestConfigCommand:
         assert "work_minutes" in result.output
 
     def test_config_set_value(self, runner, tmp_path):
-        with patch("src.core.config.CONFIG_FILE", tmp_path / "config.json"):
-            with patch("src.core.config.CONFIG_DIR", tmp_path):
+        with patch("pomo_pet.core.config.CONFIG_FILE", tmp_path / "config.json"):
+            with patch("pomo_pet.core.config.CONFIG_DIR", tmp_path):
                 result = runner.invoke(cli, ["config", "work_minutes", "30"])
                 assert result.exit_code == 0
                 assert "work_minutes = 30" in result.output

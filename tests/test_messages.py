@@ -1,9 +1,9 @@
 """Tests for the pet message system."""
 
 import pytest
-from src.core.messages import MessageProvider, get_message, load_custom_messages
-import src.core.messages as messages_mod
-from src.core.timer import TimerPhase
+from pomo_pet.core.messages import MessageProvider, get_message, load_custom_messages
+import pomo_pet.core.messages as messages_mod
+from pomo_pet.core.timer import TimerPhase
 
 
 class TestMessageProvider:

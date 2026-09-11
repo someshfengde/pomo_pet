@@ -27,21 +27,21 @@ else:
     _BASE_DIR = Path(__file__).parent
     _ASSETS_DIR = _BASE_DIR / "assets"
     _PETS_DIR = _BASE_DIR / "pets"
-    sys.path.insert(0, str(_BASE_DIR))
+    sys.path.insert(0, str(_BASE_DIR / "src"))
 
 # Now safe to import Qt and app modules
 from PySide6.QtWidgets import QApplication
 from PySide6.QtGui import QIcon, QPixmap
 from PySide6.QtCore import QTimer
 
-from src.pets.loader import list_pets
-from src.core.timer import PomodoroTimer, TimerPhase
-from src.core.messages import get_message
-from src.core.stats import StatsStore
-from src.core.config import Config
-from src.ui.window import PetWindow
-from src.ui.sounds import play_phase_change, play_session_complete, play_click, set_volume
-from src.ui.notifications import notify_session_complete, notify_break_over, notify_long_break
+from pomo_pet.pets.loader import list_pets
+from pomo_pet.core.timer import PomodoroTimer, TimerPhase
+from pomo_pet.core.messages import get_message
+from pomo_pet.core.stats import StatsStore
+from pomo_pet.core.config import Config
+from pomo_pet.ui.window import PetWindow
+from pomo_pet.ui.sounds import play_phase_change, play_session_complete, play_click, set_volume
+from pomo_pet.ui.notifications import notify_session_complete, notify_break_over, notify_long_break
 
 
 def _set_macos_app_identity() -> None:
@@ -82,7 +82,7 @@ def main() -> None:
     if not pets:
         print(f"No pets found in {_PETS_DIR}!", file=sys.stderr)
         # Fallback: try the development path
-        dev_pets = Path(__file__).parent / "pets" if not getattr(sys, "frozen", False) else _PETS_DIR
+        dev_pets = _PETS_DIR if not getattr(sys, "frozen", False) else _PETS_DIR
         pets = list_pets(dev_pets)
         if not pets:
             print("No pets found anywhere!", file=sys.stderr)
@@ -182,7 +182,7 @@ def main() -> None:
     window = PetWindow(pet=pet, pomo_config=cfg)
 
     # System tray integration
-    from src.ui.tray import TrayManager
+    from pomo_pet.ui.tray import TrayManager
     tray = TrayManager(on_pause=on_toggle_pause, on_reset=on_reset,
                        on_quit=lambda: app.quit())
     tray.show()

@@ -84,9 +84,9 @@ All notable changes to Pomo Pet are documented here.
 - Python CLI built with Click (`pomo-pet` command)
 - `uv` package management with `pyproject.toml`
 - `Makefile` with `install`, `test`, `test-all`, `run` targets
-- Entry points: `pomo-pet --pet avocado` and `python -m src`
+- Entry points: `pomo-pet --pet avocado` and `python -m pomo_pet`
 
-#### Timer (`src/timer.py`)
+#### Timer (`src/pomo_pet/core/timer.py`)
 - Pomodoro timer with configurable work/break durations (default 25/5)
 - Phase tracking: WORK → BREAK → WORK cycle
 - Session counting (increments on work phase completion)
@@ -95,7 +95,7 @@ All notable changes to Pomo Pet are documented here.
 - MM:SS formatting (`timer.format_remaining()`)
 - Tick respects paused state (no-op when paused)
 
-#### Pet System (`src/pet_loader.py`)
+#### Pet System (`src/pomo_pet/pets/loader.py`)
 - Load pets from `pets/` directory structure
 - `pet.json` metadata: id, displayName, description, spritesheetPath, kind
 - Animation definitions: frameWidth, frameHeight, per-animation fps/loop/frames
@@ -103,7 +103,7 @@ All notable changes to Pomo Pet are documented here.
 - `list_pets()` discovers all valid pets in a directory
 - Error handling: missing JSON, missing spritesheet, invalid JSON, missing fields
 
-#### Window (`src/pet_window.py`)
+#### Window (`src/pomo_pet/ui/window.py`)
 - PySide6 (Qt) frameless, transparent, always-on-top window
 - Native macOS dragging via `Qt.FramelessWindowHint`
 - Frosted dark glass design (no borders, no close button)
@@ -138,18 +138,18 @@ All notable changes to Pomo Pet are documented here.
 - Drag threshold (5px) prevents accidental pause on drag
 - Q or ESC → quit
 
-#### Messages (`src/messages.py`)
+#### Messages (`src/pomo_pet/core/messages.py`)
 - Phase-aware motivational messages
 - Work messages: "Focus time!", "Stay sharp!", etc.
 - Break messages: "Take a break!", "Rest your eyes!", etc.
 - Extensible `MessageProvider` with custom message support
 
-#### Spritesheet Rendering (`src/pet_renderer.py`)
+#### Spritesheet Rendering (`src/pomo_pet/pets/renderer.py`)
 - Pillow-based spritesheet loading
 - Frame extraction from grid layout
 - Support for variable frame sizes
 
-#### CLI (`src/cli.py`)
+#### CLI (`src/pomo_pet/cli.py`)
 - `--pet <name>` select pet by id
 - `--work <minutes>` custom work duration
 - `--break <minutes>` custom break duration

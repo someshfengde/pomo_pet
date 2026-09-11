@@ -11,17 +11,17 @@ import click
 
 _FOREGROUND_ENV = "_POMO_PET_FOREGROUND"
 
-from src.pets.loader import list_pets
-from src.core.timer import PomodoroTimer, TimerPhase
-from src.core.messages import get_message, load_custom_messages
-from src.core.stats import StatsStore
-from src.core.config import Config
-from src.ui.sounds import play_phase_change, play_session_complete, play_click, set_volume
-from src.ui.notifications import notify_session_complete, notify_break_over, notify_long_break
+from pomo_pet.pets.loader import list_pets
+from pomo_pet.core.timer import PomodoroTimer, TimerPhase
+from pomo_pet.core.messages import get_message, load_custom_messages
+from pomo_pet.core.stats import StatsStore
+from pomo_pet.core.config import Config
+from pomo_pet.ui.sounds import play_phase_change, play_session_complete, play_click, set_volume
+from pomo_pet.ui.notifications import notify_session_complete, notify_break_over, notify_long_break
 
 
 def get_pets_dir() -> Path:
-    return Path(__file__).parent.parent / "pets"
+    return Path(__file__).resolve().parents[2] / "pets"
 
 
 def _set_macos_process_name(name: str) -> None:
@@ -64,7 +64,7 @@ def _start_pet(pet_name: str, work_minutes: int, break_minutes: int, no_sound: b
             python_bin = sys.executable
 
         proc = subprocess.Popen(
-            [python_bin, "-m", "src", "start", pet_name],
+            [python_bin, "-m", "pomo_pet", "start", pet_name],
             stdin=subprocess.DEVNULL,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
@@ -79,7 +79,7 @@ def _start_pet(pet_name: str, work_minutes: int, break_minutes: int, no_sound: b
     # ── Foreground child process: safe to import Qt now ──
     from PySide6.QtWidgets import QApplication
     from PySide6.QtGui import QIcon, QPixmap
-    from src.ui.window import PetWindow
+    from pomo_pet.ui.window import PetWindow
 
     store = StatsStore()
     click.echo(f"Starting {pet.display_name} | Work: {work_minutes}min | Break: {break_minutes}min")
@@ -177,7 +177,7 @@ def _start_pet(pet_name: str, work_minutes: int, break_minutes: int, no_sound: b
     window = PetWindow(pet=pet, pomo_config=cfg_obj)
 
     # System tray integration
-    from src.ui.tray import TrayManager
+    from pomo_pet.ui.tray import TrayManager
     tray = TrayManager(on_pause=on_toggle_pause, on_reset=on_reset,
                        on_quit=lambda: app.quit())
     tray.show()
@@ -312,7 +312,7 @@ def config_cmd(key, value):
     """
     cfg = Config.load()
     if key is None:
-        from src.core.config import CONFIG_FILE
+        from pomo_pet.core.config import CONFIG_FILE
         click.echo(f"Config file: {CONFIG_FILE}")
         click.echo(f"  default_pet:         {cfg.default_pet}")
         click.echo(f"  work_minutes:        {cfg.work_minutes}")

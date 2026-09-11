@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 from typing import List
 
-from src.pets.models import Pet, AnimationDef
+from pomo_pet.pets.models import Pet, AnimationDef
 
 
 class PetLoadError(Exception):

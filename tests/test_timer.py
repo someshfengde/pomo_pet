@@ -1,7 +1,7 @@
 """Tests for the Pomodoro timer logic."""
 
 import pytest
-from src.core.timer import PomodoroTimer, TimerPhase
+from pomo_pet.core.timer import PomodoroTimer, TimerPhase
 
 
 class TestTimerInit:

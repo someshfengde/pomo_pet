@@ -9,8 +9,8 @@ from PySide6.QtWidgets import QMainWindow, QApplication, QMenu
 from PySide6.QtCore import Qt, QTimer, QPoint, QRect
 from PySide6.QtGui import QPainter, QPixmap, QColor, QFont, QPen, QBrush, QShortcut, QKeySequence, QAction, QCursor
 
-from src.pets.models import AnimationDef
-from src.ui.theme import WindowConfig, Theme
+from pomo_pet.pets.models import AnimationDef
+from pomo_pet.ui.theme import WindowConfig, Theme
 
 # macOS: load AppKit for native window control (pyobjc handles ARM64 ABI correctly)
 _AppKit = None
