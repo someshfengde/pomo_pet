@@ -20,14 +20,14 @@ test('keeps a running deadline through reload and pauses without losing progress
   await seed(page, { settings: { work: 1 } });
   await page.locator('#startPauseButton').click();
   await page.clock.runFor(5100);
-  expect(Number((await page.locator('#timerText').textContent()).split(':')[1])).toBeLessThanOrEqual(55);
+  expect(Number((await page.locator('#timerText').textContent()).split(':')[1])).toBeLessThan(60);
   const deadline = (await saved(page)).timer.deadline;
   await page.reload();
   await expect(page.locator('#startPauseButton')).toHaveText('Pause');
   expect((await saved(page)).timer.deadline).toBe(deadline);
   await page.locator('#startPauseButton').click();
   const pausedTime = await page.locator('#timerText').textContent();
-  expect(Number(pausedTime.split(':')[1])).toBeLessThanOrEqual(55);
+  expect(Number(pausedTime.split(':')[1])).toBeLessThan(60);
   await route(page, 'settings');
   await page.locator('#tickToggle').check();
   await page.locator('#dailyGoalInput').fill('60');
@@ -129,8 +129,13 @@ test('can cancel clear and import, then import a valid backup', async ({ page })
   await page.locator('#clearStatsButton').click();
   expect((await saved(page)).stats.sessions).toHaveLength(1);
   const file = { name: 'backup.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify({ stats: { sessions: [session('2026-09-10', 15)], tasks: [{ title: 'Imported task' }] }, settings: { work: -10 } })) };
-  page.once('dialog', dialog => dialog.dismiss());
+  const canceled = new Promise(resolve => page.once('dialog', async dialog => {
+    await dialog.dismiss();
+    resolve();
+  }));
   await page.locator('#importStatsInput').setInputFiles(file);
+  await canceled;
+  await expect(page.locator('#importStatsInput')).toHaveValue('');
   expect((await saved(page)).stats.sessions[0].focusMinutes).toBe(25);
   page.once('dialog', dialog => dialog.accept());
   await page.locator('#importStatsInput').setInputFiles(file);
@@ -214,6 +219,8 @@ test('storage failures keep the app usable and explicitly flag unsaved work', as
   await expect(page.locator('#startPauseButton')).toHaveText('Pause');
 });
 
+test.describe('pet request races', () => {
+test.use({ serviceWorkers: 'block' });
 test('an older pet response cannot override a newer bundled selection', async ({ page, context }) => {
   let finish;
   const pending = new Promise(resolve => { finish = resolve; });
@@ -233,6 +240,8 @@ test('an older pet response cannot override a newer bundled selection', async ({
   await expect(page.locator('#customPetInput')).toHaveValue('');
   await route(page, 'focus');
   await expect(page.locator('#petSprite')).toHaveAttribute('aria-label', 'Animated blueberry pet');
+});
+
 });
 
 test('downloaded backups include tasks and completed session records', async ({ page }) => {

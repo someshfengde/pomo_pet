@@ -178,6 +178,11 @@ test("can complete the active task from the focus view", async ({ page }) => {
   await expect(page.locator('.task-item[data-completed="true"]')).toContainText("Finish focus UI");
 });
 
+test.describe("remote pet metadata", () => {
+// WebKit does not reliably intercept cross-origin requests forwarded through a
+// service worker. Offline behavior is covered independently with a real origin.
+test.use({ serviceWorkers: "block" });
+
 test("supports custom pet spritesheets", async ({ page }) => {
   await completeOnboarding(page);
   await goToRoute(page, "pets");
@@ -272,6 +277,8 @@ test("resolves Codex Pets pet pages with manifest sizing", async ({ page, contex
   await expect(sprite).toHaveCSS("height", "208px");
   await expect(sprite).toHaveCSS("background-size", /^1536px(?: auto)?$/);
   await expect(sprite).toHaveAttribute("aria-label", "Animated custom pet");
+});
+
 });
 
 test("captures post-session reflections locally", async ({ page }) => {

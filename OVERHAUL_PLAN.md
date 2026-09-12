@@ -46,7 +46,7 @@ not a claim that every possible browser/device condition has been tested.
 Progress and validation results will be recorded here before deployment.
 
 ## Implemented
-All five implementation areas are complete. Preserved the pre-existing staged
+Implementation is complete; final publication is gated by the checks below. Preserved the pre-existing staged
 package migration in its own commit. Added deadline-based browser timers and
 single-tab editing, validated storage/imports, protected destructive actions,
 restored text-entry focus, improved responsive routes, scoped offline caches,
@@ -57,8 +57,10 @@ fixed desktop elapsed-time/configuration/skip bugs, and bundled wheel resources.
   static PWA checks. Tests now isolate real user preferences.
 - PWA audit passes all five checks; Python source compiles; wheel and source
   distribution build, and wheel contents include required sprites and sounds.
-- Browser coverage expanded to 31 workflows across Chromium, Firefox, and WebKit,
-  including automated WCAG checks on onboarding and all five routes.
+- All 93 browser tests pass locally: 31 workflows across Chromium, Firefox, and
+  WebKit, including automated WCAG checks on onboarding and all five routes.
+- All three service-worker lifecycle and outage tests pass. The final wheel also
+  passes installation in an isolated environment with its CLI and bundled assets.
 - Desktop and phone screenshots inspected; controls tested at 320x568, 390x844,
   1024x600, and 1280x720. Fixed clipped small-phone controls and an unlabeled input.
 - Verified WebKit offline recovery with the origin server stopped. Protocol
@@ -72,3 +74,8 @@ future sessions. Imported backups replace history/tasks after confirmation.
 Only one tab edits at once; other tabs retain navigation and take over on close.
 Real OS notifications, installed iOS PWA behavior, and manual macOS window/tray
 interactions require device-level validation beyond the automated suites.
+
+- Updated Pillow to 12.3.0 and setuptools to 84.0.0 in the lockfile to address the
+  14 dependency alerts reported by GitHub; Pillow's declared minimum is also patched.
+- Added deterministic service-worker checks for scoped cache upgrades, server
+  failures, network outages, and unrelated origins.

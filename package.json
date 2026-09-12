@@ -3,7 +3,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test:web": "playwright test"
+    "test:web": "playwright test",
+    "test:worker": "node --test tests-js/*.test.js"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.13.0",

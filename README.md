@@ -208,6 +208,7 @@ make test
 uv run pytest tests/test_web_pwa.py
 uv run python scripts/audit_pwa.py
 npx playwright install chromium firefox webkit
+npm run test:worker
 npm run test:web
 ```
 
