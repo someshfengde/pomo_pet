@@ -43,10 +43,10 @@ not a claim that every possible browser/device condition has been tested.
 - Service worker activation deletes unrelated origin caches and caches errors.
 - Narrow screens push Start far below the timer; short desktop views clip content.
 
-Progress and validation results will be recorded here before deployment.
+Implementation and final validation results are recorded below.
 
 ## Implemented
-Implementation is complete; final publication is gated by the checks below. Preserved the pre-existing staged
+Implementation, validation, and publication are complete. Preserved the pre-existing staged
 package migration in its own commit. Added deadline-based browser timers and
 single-tab editing, validated storage/imports, protected destructive actions,
 restored text-entry focus, improved responsive routes, scoped offline caches,
@@ -66,7 +66,21 @@ fixed desktop elapsed-time/configuration/skip bugs, and bundled wheel resources.
 - Verified WebKit offline recovery with the origin server stopped. Protocol
   offline emulation failed before service-worker dispatch, so the regression test
   now shuts down an isolated origin for all engines.
-- Final browser CI and GitHub Pages publication are the remaining release gates.
+- GitHub CI passed for commit `624fc35075ea07c10d622b9ae6c99c21dae4bf00`:
+  [CI run](https://github.com/someshfengde/pomo_pet/actions/runs/34677970875).
+  Linux ran 187 Python tests with the two macOS-only tests skipped, all 93 browser
+  tests, and all three service-worker tests. All 189 Python tests passed on macOS.
+- GitHub Pages deployed that tested revision successfully:
+  [deployment run](https://github.com/someshfengde/pomo_pet/actions/runs/34678099127).
+- Production verified on 2026-09-12 at 06:27 UTC. The live HTML, JavaScript, CSS,
+  and service worker exactly match the tested checkout. Onboarding, task creation
+  and selection, timer start/pause/reload, all five routes, mobile controls, and
+  offline reload passed with no JavaScript errors.
+- [Live app](https://someshfengde.github.io/pomo_pet/) and
+  [v1.2.38 release](https://github.com/someshfengde/pomo_pet/releases/tag/v1.2.38).
+  The release automation changed only the package version and lockfile; the final
+  source distribution and wheel build successfully at that version.
+- GitHub reports zero open dependency alerts after the dependency updates.
 
 ## Behavior notes
 Session phases now wait for the user to begin the next phase. Settings affect
